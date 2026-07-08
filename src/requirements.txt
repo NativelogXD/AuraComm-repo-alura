@@ -11,3 +11,9 @@ langgraph
 python-dotenv
 pydantic
 langsmith
+langchain-google-genai
+langchain-huggingface
+transformers
+pypdf
+langgraph-checkpoint-sqlite
+tabulate
