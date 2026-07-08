@@ -4,10 +4,10 @@ from langchain_community.document_loaders import DirectoryLoader, PyPDFLoader
 from langchain_text_splitters import CharacterTextSplitter
 from transformers import AutoTokenizer
 from langchain_community.vectorstores import FAISS
-from langchain_classic.retrievers.multi_query import MultiQueryRetriever
+from langchain.retrievers.multi_query import MultiQueryRetriever
 from rag.models import get_llm, get_embeddings
 
-logging.getLogger("langchain_classic.retrievers.multi_query").setLevel(logging.WARNING)
+logging.getLogger("langchain.retrievers.multi_query").setLevel(logging.WARNING)
 # Suprimir warnings de transformers
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 

@@ -3,7 +3,7 @@ from typing import Type
 from pydantic import BaseModel, Field
 from langchain_core.tools import BaseTool
 from rag.models import get_llm
-from langchain_experimental.agents import create_pandas_dataframe_agent
+from langchain_experimental.agents.agent_toolkits.pandas.base import create_pandas_dataframe_agent
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import JsonOutputParser
 from langchain_core.runnables import RunnablePassthrough
@@ -30,7 +30,7 @@ class AnalizarDatosCSVTool(BaseTool):
         if self.df_client is None and self.df_record is None:
             return "Error: CSVs no encontrados."
         llm_pandas = get_llm()
-        agente = create_pandas_dataframe_agent(llm_pandas, [self.df_client, self.df_record], verbose=False, allow_dangerous_code=True)
+        agente = create_pandas_dataframe_agent(llm_pandas, [self.df_client, self.df_record], verbose=False, allow_dangerous_code=True, agent_type="tool-calling")
         return agente.invoke({"input": consulta})["output"]
 
 class ResultadoRAG(BaseModel):
