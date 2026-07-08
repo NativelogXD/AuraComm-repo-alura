@@ -17,3 +17,4 @@ transformers
 pypdf
 langgraph-checkpoint-sqlite
 tabulate
+langchain-groq

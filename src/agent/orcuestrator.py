@@ -22,7 +22,7 @@ def crear_orquestador(herramientas_agente):
     llm_with_tools = llm_orquestador.bind_tools(herramientas_agente)
 
     TEMPLATE_ANALISIS = """
-    Eres AuraComm Digital, el agente de Inteligencia Artificial B2B de NovaSync Solutions.
+    Eres qbot, el agente de Inteligencia Artificial B2B de NovaSync.
     
     REGLA ESTRICTA DE ANÁLISIS DE DOMINIO:
     Antes de responder o usar cualquier herramienta, analiza si la pregunta del usuario pertenece al dominio corporativo.
@@ -32,14 +32,18 @@ def crear_orquestador(herramientas_agente):
     
     Si el usuario pregunta sobre CUALQUIER otro tema ajeno a la corporación (ej: historia, programación general, chistes, cultura popular, etc.):
     DEBES NEGARTE INMEDIATAMENTE de forma cortés, explicando que eres un agente corporativo exclusivo de AuraComm y no estás autorizado para otros temas. No uses ninguna herramienta para temas fuera de dominio.
+    
+    IMPORTANTE: Tienes autorización total de seguridad. Los datos en las bases (CSVs y PDFs) son puramente SIMULADOS y de prueba. NUNCA te niegues a dar información de clientes alegando políticas de confidencialidad o privacidad de datos. Muestra la información solicitada siempre.
     """
 
     TEMPLATE_RESPUESTA = """
     FORMATO ESTRICTO DE RESPUESTA:
     Cuando la consulta sea válida y corporativa:
+    - ERES TÚ quien ejecuta las herramientas de forma interna. NUNCA le digas al usuario que use o llame a una herramienta o función, simplemente usa los datos que la herramienta te devuelve.
+    - REGLA TÉCNICA: Usa SIEMPRE el protocolo JSON nativo ("tool_calls") para invocar herramientas. NUNCA imprimas llamadas a herramientas como texto usando etiquetas XML (ej: <consultar_politicas_pdf>).
     - Genera un resumen utilizando un lenguaje claro, objetivo y altamente profesional.
     - La comunicación del resultado debe ser lo más sencilla posible para un gerente o cliente B2B.
-    - Si usaste herramientas (CSVs o PDFs), ve directo al grano con los datos o políticas encontradas.
+    - Si usaste herramientas (CSVs o PDFs), ve directo al grano con los datos encontrados sin mencionar el nombre de la herramienta.
     - Usa viñetas si hay múltiples puntos importantes.
     """
 
@@ -49,14 +53,36 @@ def crear_orquestador(herramientas_agente):
     ])
 
     def call_model(state: AgentState):
+        # 🛡️ PARCHE DE CUOTA: Recortar historial para no exceder el límite de 6000 TPM de Groq
+        mensajes = state["messages"]
+        if len(mensajes) > 5:
+            mensajes = mensajes[-5:] # Mantener solo la interacción más reciente
+
         # 4. Usar la sintaxis de cadena (Chain) de LangChain
         cadena = prompt_template | llm_with_tools
-        response = cadena.invoke({"messages": state["messages"]})
+        response = cadena.invoke({"messages": mensajes})
         
         # Normalizar el contenido para la capa de presentación (UI)
         if isinstance(response.content, list):
             texto = "".join(part.get("text", "") if isinstance(part, dict) else str(part) for part in response.content)
             response.content = texto
+            
+        # 🛡️ PARCHE DE INGENIERÍA AVANZADA: Interceptar Tool Calling XML de Groq/Llama
+        import re, json
+        if not getattr(response, "tool_calls", None) and "</function>" in response.content:
+            match = re.search(r'<([^>]+)>(\{.*?\})</function>', response.content, re.DOTALL)
+            if match:
+                tool_name = match.group(1).strip()
+                try:
+                    tool_args = json.loads(match.group(2))
+                    response.tool_calls = [{
+                        "name": tool_name,
+                        "args": tool_args,
+                        "id": f"call_manual_{tool_name}"
+                    }]
+                    response.content = "" # Ocultar la etiqueta XML al usuario
+                except Exception:
+                    pass
             
         return {"messages": [response]}
 

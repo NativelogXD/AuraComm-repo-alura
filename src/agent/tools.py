@@ -10,12 +10,8 @@ from langchain_core.runnables import RunnablePassthrough
 
 from rag.rag import obtener_retriever_avanzado
 
-# 1. Esquemas de Entrada (Pydantic)
-class ConsultaCSVInput(BaseModel):
-    consulta: str = Field(description="La pregunta detallada sobre datos tabulares o matemáticos (MRR, Clientes, Latencia).")
-
-class ConsultaPDFInput(BaseModel):
-    consulta: str = Field(description="La pregunta sobre políticas corporativas (SLA, Privacidad, FAQ).")
+# 1. Esquemas Centralizados (Pydantic)
+from agent.schemas import ConsultaCSVInput, ConsultaPDFInput, CodigoPandas, ResultadoRAG
 
 # 2. Clases de Herramientas (BaseTool)
 class AnalizarDatosCSVTool(BaseTool):
@@ -29,20 +25,45 @@ class AnalizarDatosCSVTool(BaseTool):
     def _run(self, consulta: str) -> str:
         if self.df_client is None and self.df_record is None:
             return "Error: CSVs no encontrados."
+            
+        from data.data_dictionary import PANDAS_INSTRUCTIONS
+        
         llm_pandas = get_llm()
-        agente = create_pandas_dataframe_agent(llm_pandas, [self.df_client, self.df_record], verbose=False, allow_dangerous_code=True, agent_type="tool-calling")
-        return agente.invoke({"input": consulta})["output"]
+        
+        # CodigoPandas es importado desde agent.schemas
+            
+        llm_with_schema = llm_pandas.with_structured_output(CodigoPandas)
+        
+        prompt = ChatPromptTemplate.from_messages([
+            ("system", PANDAS_INSTRUCTIONS),
+            ("human", "Consulta del usuario: {consulta}")
+        ])
+        
+        cadena = prompt | llm_with_schema
+        
+        try:
+            resultado_llm = cadena.invoke({"consulta": consulta})
+            codigo = resultado_llm.codigo.replace("```python", "").replace("```", "").strip()
+            
+            locals_dict = {'df_client': self.df_client, 'df_record': self.df_record}
+            exec(codigo, {}, locals_dict)
+            
+            if 'final_result' in locals_dict:
+                # Retornar el resultado directamente como cadena determinista
+                return f"EJECUCIÓN DETERMINISTA EXITOSA.\nCÓDIGO EJECUTADO:\n{codigo}\n\nRESULTADO CRUDO:\n{str(locals_dict['final_result'])}"
+            else:
+                return "Error: La IA no guardó el resultado en la variable 'final_result'."
+        except Exception as e:
+            return f"Error ejecutando código determinista: {str(e)}"
 
-class ResultadoRAG(BaseModel):
-    respuesta: str = Field(description="Respuesta detallada basada en los PDFs")
-    certeza: str = Field(description="Alta, Media o Baja, dependiendo de la claridad del contexto")
+# ResultadoRAG es importado desde agent.schemas
 
 def format_docs(docs):
     return "\n\n".join([doc.page_content for doc in docs])
 
 class ConsultarPoliticasPDFTool(BaseTool):
     name: str = "consultar_politicas_pdf"
-    description: str = "ÚTIL ÚNICAMENTE para buscar políticas corporativas en los PDFs (SLA, Privacidad, FAQ)."
+    description: str = "ÚTIL ÚNICAMENTE para buscar políticas corporativas, documentación técnica o arquitectura en los PDFs (SLA, Privacidad, FAQ)."
     args_schema: Type[BaseModel] = ConsultaPDFInput
     
     def _run(self, consulta: str) -> str:
@@ -56,6 +77,7 @@ class ConsultarPoliticasPDFTool(BaseTool):
         
         system_prompt = (
             "Eres un analista corporativo. Responde basándote SOLO en el contexto proporcionado.\n"
+            "REGLA CRÍTICA: NUNCA inventes URLs, enlaces, correos ni datos de contacto que no estén EXPLÍCITAMENTE escritos en el contexto.\n"
             "{format_instructions}\n\n"
             "Contexto:\n{context}"
         )
