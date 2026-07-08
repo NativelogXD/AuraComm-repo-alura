@@ -1,14 +1,16 @@
 # NovaSync: Agente Digital B2B (Arquitectura Determinista)
 
-## 📌 Descripción General del Proyecto
+## Descripción General del Proyecto
 
-**NovaSync B2B** es un agente de inteligencia artificial corporativo diseñado para interactuar con gerentes y clientes empresariales. El agente tiene acceso seguro a bases de datos corporativas (documentos PDF de arquitectura/soporte y bases de datos tabulares de clientes) para resolver consultas complejas en tiempo real. 
+**NovaSync B2B** es un agente de inteligencia artificial corporativo diseñado para interactuar con gerentes y clientes empresariales. La corporación simulada opera en el sector de **Telecomunicaciones e Infraestructura de Red B2B** (proveyendo telefonía, venta de equipos de red, monitoreo de latencia/uptime y servicios MRR).
+
+El agente tiene acceso seguro a bases de datos corporativas (documentos PDF de arquitectura/soporte y bases de datos tabulares de clientes de telefonía) para resolver consultas complejas en tiempo real. 
 
 A diferencia de los chatbots tradicionales, este proyecto emplea una **Arquitectura Determinista**. Esto significa que las herramientas, bases de datos y formatos de salida están estrictamente controlados mediante validación estructurada, impidiendo que el LLM alucine datos corporativos.
 
 ---
 
-## 🏗️ Arquitectura de la Solución
+##  Arquitectura de la Solución
 
 El núcleo del sistema está construido sobre un grafo de estados (**StateGraph**) que orquesta el razonamiento de la IA:
 
@@ -23,7 +25,7 @@ El núcleo del sistema está construido sobre un grafo de estados (**StateGraph*
 
 ---
 
-## 🛠️ Tecnologías y Herramientas Utilizadas
+##  Tecnologías y Herramientas Utilizadas
 
 - **Lenguaje**: Python 3.10+
 - **Orquestación IA**: LangChain & LangGraph
@@ -36,7 +38,7 @@ El núcleo del sistema está construido sobre un grafo de estados (**StateGraph*
 
 ---
 
-## 🚀 Instrucciones de Ejecución
+##  Instrucciones de Ejecución
 
 1. **Clonar y Preparar el Entorno:**
    Asegúrate de estar en el directorio `src/` del proyecto.
@@ -65,15 +67,15 @@ El núcleo del sistema está construido sobre un grafo de estados (**StateGraph*
 
 ---
 
-## 💬 Ejemplos de Interacción
+##  Ejemplos de Interacción
 
-### ❓ Ejemplo de Preguntas
+###  Ejemplo de Preguntas
 - *"Háblame acerca del documento DOC-ARCH-001 y de qué trata."*
 - *"¿Cuáles son las políticas de privacidad según el documento DOC-PRIV-003?"*
 - *"Dame información sobre los clientes que han cancelado nuestros servicios este año."*
 - *"Cuéntame un chiste."* *(Para probar el escudo anti-prompting)*
 
-### 🤖 Ejemplo de Respuestas del Agente
+###  Ejemplo de Respuestas del Agente
 
 **Consulta:** *"¿Cuáles son las políticas de privacidad según el documento DOC-PRIV-003?"*
 
@@ -99,7 +101,7 @@ El núcleo del sistema está construido sobre un grafo de estados (**StateGraph*
 
 ---
 
-## ⚠️ Advertencias y Recomendaciones (API Limits)
+## Advertencias y Recomendaciones (API Limits)
 
 Este proyecto está diseñado para funcionar en un entorno de capa gratuita (Free Tier), por lo que se deben tener en cuenta las siguientes protecciones implementadas:
 
