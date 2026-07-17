@@ -2,7 +2,12 @@ import os
 import logging
 import hashlib
 import shutil
-from langchain_community.document_loaders import DirectoryLoader, PyPDFLoader
+import boto3
+from botocore.exceptions import ClientError
+import io
+import pypdf
+from langchain_core.documents import Document
+from botocore.exceptions import ClientError
 from langchain_text_splitters import CharacterTextSplitter
 from transformers import AutoTokenizer
 from langchain_community.vectorstores import FAISS
@@ -13,22 +18,76 @@ logging.getLogger("langchain_classic.retrievers.multi_query").setLevel(logging.W
 # Suprimir warnings de transformers
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
-VECTORSTORE_PATH = "faiss_auracomm_index"
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+DB_DIR = os.environ.get("DB_DIR", BASE_DIR)
+
+# Si DB_DIR no existe (cuando corre en Docker), crearlo.
+if not os.path.exists(DB_DIR):
+    os.makedirs(DB_DIR, exist_ok=True)
+
+VECTORSTORE_PATH = os.path.join(DB_DIR, "faiss_auracomm_index")
+
+def get_s3_client():
+    endpoint = os.getenv('MINIO_ENDPOINT')
+    if endpoint and not endpoint.startswith('http'):
+        endpoint = f"http://{endpoint}"
+    return boto3.client(
+        's3',
+        endpoint_url=endpoint,
+        aws_access_key_id=os.getenv('MINIO_ACCESS_KEY'),
+        aws_secret_access_key=os.getenv('MINIO_SECRET_KEY')
+    )
 
 def fase1_cargar_pdfs_crudos():
-    """Lee todos los PDFs usando DirectoryLoader (Carga Avanzada)."""
-    if not os.path.exists("data"):
-        print(" Directorio data/ no encontrado.")
+    """Descarga los PDFs desde MinIO a la memoria RAM (Stateless) y extrae el texto."""
+    bucket_name = os.getenv('MINIO_BUCKET_NAME')
+    
+    if not bucket_name:
+        print(" Advertencia: MINIO_BUCKET_NAME no configurado.")
         return []
         
-    # Carga avanzada por lotes usando glob patterns
-    loader = DirectoryLoader("data", glob="**/*.pdf", loader_cls=PyPDFLoader)
-    documentos_crudos = loader.load()
+    s3 = get_s3_client()
+    documentos_crudos = []
     
+    try:
+        response = s3.list_objects_v2(Bucket=bucket_name, Prefix='data/')
+        objects = response.get('Contents', [])
+        
+        pdf_keys = [obj['Key'] for obj in objects if obj['Key'].lower().endswith('.pdf')]
+        
+        if not pdf_keys:
+            print(" No se encontraron PDFs en el bucket.")
+            return []
+            
+        print(f" Procesando {len(pdf_keys)} PDFs en memoria RAM (Stateless) desde MinIO...")
+        for key in pdf_keys:
+            # 1. Obtener el archivo directamente a la memoria RAM
+            obj_response = s3.get_object(Bucket=bucket_name, Key=key)
+            pdf_bytes = io.BytesIO(obj_response['Body'].read())
+            
+            # 2. Extraer texto al vuelo
+            try:
+                reader = pypdf.PdfReader(pdf_bytes)
+                for i, page in enumerate(reader.pages):
+                    texto = page.extract_text()
+                    if texto:
+                        # 3. Formatear como Documento de LangChain
+                        doc = Document(
+                            page_content=texto, 
+                            metadata={"source": f"s3://{bucket_name}/{key}", "page": i}
+                        )
+                        documentos_crudos.append(doc)
+            except Exception as e:
+                print(f" Error extrayendo texto de {key}: {e}")
+            
+    except ClientError as e:
+        print(f" Error accediendo a MinIO: {e}")
+        return []
+        
     if not documentos_crudos:
-        print(" No se encontraron PDFs en el directorio data/.")
+        print(" No se encontraron documentos válidos tras procesar los PDFs.")
     else:
-        print(f" Leídos {len(documentos_crudos)} documentos (páginas) en total mediante DirectoryLoader.")
+        print(f" Leídos {len(documentos_crudos)} documentos (páginas) en total directamente desde la memoria.")
         
     return documentos_crudos
 
@@ -52,16 +111,26 @@ def fase2_estructurar_documentos(documentos_crudos):
     return docs_procesados
 
 def get_pdfs_hash():
-    """Calcula un hash MD5 de todos los PDFs para detectar modificaciones."""
-    if not os.path.exists("data"):
+    """Calcula un hash MD5 combinando los ETags de MinIO para detectar modificaciones."""
+    bucket_name = os.getenv('MINIO_BUCKET_NAME')
+    if not bucket_name:
         return ""
+        
+    s3 = get_s3_client()
     hasher = hashlib.md5()
-    for filename in sorted(os.listdir("data")):
-        if filename.endswith(".pdf"):
-            filepath = os.path.join("data", filename)
-            with open(filepath, "rb") as f:
-                hasher.update(f.read())
-    return hasher.hexdigest()
+    
+    try:
+        response = s3.list_objects_v2(Bucket=bucket_name, Prefix='data/')
+        objects = response.get('Contents', [])
+        pdf_objects = [obj for obj in objects if obj['Key'].lower().endswith('.pdf')]
+        
+        for obj in sorted(pdf_objects, key=lambda x: x['Key']):
+            # Usar ETag directo de S3, es una forma rápida de verificar cambios
+            hasher.update(obj['ETag'].encode('utf-8'))
+            
+        return hasher.hexdigest()
+    except ClientError:
+        return ""
 
 def fase3_crear_base_vectorial(docs_procesados):
     """Convierte texto a vectores y guarda el índice FAISS."""
@@ -76,7 +145,7 @@ def fase3_crear_base_vectorial(docs_procesados):
             print("VectorStore FAISS sincronizado. Omitiendo embeddings pesados.")
             return
         else:
-            print("⚠️ Cambio detectado en los PDFs. Reconstruyendo la base de datos vectorial (FAISS)...")
+            print("Cambio detectado en los PDFs. Reconstruyendo la base de datos vectorial (FAISS)...")
             shutil.rmtree(VECTORSTORE_PATH)
             
     if docs_procesados:

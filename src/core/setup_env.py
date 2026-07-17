@@ -1,4 +1,5 @@
 import os
+import boto3
 from dotenv import load_dotenv
 
 from rag.rag import (
@@ -8,13 +9,44 @@ from rag.rag import (
 )
 from data.data_cleaning import fase4_limpiar_csvs
 
+def validar_entorno_nube():
+    """Valida que todas las credenciales inyectadas por la plataforma (ej. Coolify) existan."""
+    # 2. Atrapar las variables inyectadas por Coolify (o .env local)
+    MINIO_ENDPOINT = os.getenv("MINIO_ENDPOINT")
+    MINIO_ACCESS = os.getenv("MINIO_ACCESS_KEY")
+    MINIO_SECRET = os.getenv("MINIO_SECRET_KEY")
+    MINIO_BUCKET = os.getenv("MINIO_BUCKET_NAME")
+
+    # 3. Validación de seguridad temprana
+    if not MINIO_ENDPOINT or not MINIO_ACCESS or not MINIO_BUCKET:
+        raise ValueError("❌ Faltan credenciales de MinIO en las variables de entorno. Verifica la configuración en Coolify o tu .env")
+
+    # 4. Usar las variables para conectarnos al Data Lake (Prueba rápida)
+    endpoint = MINIO_ENDPOINT if MINIO_ENDPOINT.startswith('http') else f"http://{MINIO_ENDPOINT}"
+    
+    try:
+        s3_client = boto3.client(
+            's3',
+            endpoint_url=endpoint,
+            aws_access_key_id=MINIO_ACCESS,
+            aws_secret_access_key=MINIO_SECRET
+        )
+        print(f"☁️ Conexión preparada hacia el bucket en la nube: {MINIO_BUCKET}")
+    except Exception as e:
+        raise ValueError(f"❌ Error al inicializar el cliente Boto3 para MinIO: {e}")
+
 class SetupEnvironment:
     @staticmethod
     def inicializar():
         """Configura variables de entorno, índices de FAISS y carga los CSVs."""
+        # 1. Cargar entorno local (solo sirve cuando pruebas en tu propia computadora)
+        # Cuando el código esté en Coolify, las variables del servidor tendrán prioridad.
         load_dotenv()
         
         print("\n--- INICIALIZANDO SISTEMA AURACOMM ---")
+        
+        # Validar variables de nube antes de empezar procesos pesados
+        validar_entorno_nube()
         
         # 1. RAG y Base Vectorial
         docs_crudos = fase1_cargar_pdfs_crudos()

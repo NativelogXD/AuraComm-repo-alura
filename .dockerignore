@@ -1,0 +1,9 @@
+.venv/
+__pycache__/
+*.db
+faiss_auracomm_index/
+.env
+temp_pdfs/
+.git/
+.gitignore
+README.md

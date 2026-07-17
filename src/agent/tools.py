@@ -45,6 +45,10 @@ class AnalizarDatosCSVTool(BaseTool):
             resultado_llm = cadena.invoke({"consulta": consulta})
             codigo = resultado_llm.codigo.replace("```python", "").replace("```", "").strip()
             
+            forbidden_keywords = ['import', 'os', 'sys', 'subprocess', 'open', 'eval', 'exec', '__']
+            if any(keyword in codigo for keyword in forbidden_keywords):
+                return "Error de Seguridad: Código bloqueado por contener instrucciones no permitidas (Risk of RCE)."
+            
             locals_dict = {'df_client': self.df_client, 'df_record': self.df_record}
             exec(codigo, {}, locals_dict)
             
