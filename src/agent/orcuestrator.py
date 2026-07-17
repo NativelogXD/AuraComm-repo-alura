@@ -9,8 +9,17 @@ from langgraph.checkpoint.sqlite import SqliteSaver
 from rag.models import get_llm
 
 def crear_orquestador(herramientas_agente):
+    import os
+    BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    DB_DIR = os.environ.get("DB_DIR", BASE_DIR)
+    
+    if not os.path.exists(DB_DIR):
+        os.makedirs(DB_DIR, exist_ok=True)
+        
+    db_path = os.path.join(DB_DIR, "checkpoints_auracomm.db")
+    
     # 1. Memoria persistente SQLite
-    conn = sqlite3.connect("checkpoints_auracomm.db", check_same_thread=False)
+    conn = sqlite3.connect(db_path, check_same_thread=False)
     memory = SqliteSaver(conn)
 
     # 2. Estado del Grafo

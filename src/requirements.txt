@@ -18,3 +18,5 @@ pypdf
 langgraph-checkpoint-sqlite
 tabulate
 langchain-groq
+boto3
+s3fs

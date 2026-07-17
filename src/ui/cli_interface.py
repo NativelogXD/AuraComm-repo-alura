@@ -1,4 +1,5 @@
 from langchain_core.messages import HumanMessage
+from excepciones.manejador_errores import GestorExcepcionesAuraComm
 
 class CLIHandler:
     def __init__(self, app_graph, thread_id="sesion_produccion_005"):
@@ -20,8 +21,11 @@ class CLIHandler:
         
         if decision == 's':
             print("[✔️ Aprobado. Procesando...]")
-            eventos = self.app_graph.stream(None, self.config, stream_mode="values")
-            self._imprimir_eventos(eventos)
+            try:
+                eventos = self.app_graph.stream(None, self.config, stream_mode="values")
+                self._imprimir_eventos(eventos)
+            except Exception as e:
+                GestorExcepcionesAuraComm.manejar_error(e)
             return True
         else:
             print("[❌ Rechazado.]")
@@ -57,9 +61,14 @@ class CLIHandler:
                 break
                 
             print("-" * 40)
-            eventos = self.app_graph.stream(
-                {"messages": [HumanMessage(content=pregunta)]},
-                self.config,
-                stream_mode="values"
-            )
-            self._imprimir_eventos(eventos)
+            try:
+                eventos = self.app_graph.stream(
+                    {"messages": [HumanMessage(content=pregunta)]},
+                    self.config,
+                    stream_mode="values"
+                )
+                self._imprimir_eventos(eventos)
+            except Exception as e:
+                recuperable = GestorExcepcionesAuraComm.manejar_error(e)
+                if not recuperable:
+                    break
