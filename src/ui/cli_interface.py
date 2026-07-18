@@ -8,7 +8,7 @@ class CLIHandler:
 
     def procesar_hitl(self, estado_actual):
         """Maneja la aprobación humana (Human-In-The-Loop) antes de ejecutar herramientas."""
-        print("\n[⚠️ ALERTA HITL]: El agente solicita ejecutar una herramienta interna.")
+        print("\n[ ALERTA HITL]: El agente solicita ejecutar una herramienta interna.")
         
         # Extraer y mostrar exactamente qué va a ejecutar (Transparencia HITL)
         ultimo_mensaje = estado_actual.values["messages"][-1]
@@ -20,7 +20,7 @@ class CLIHandler:
         decision = input("\n¿Aprobar ejecución? (s = sí / n = no): ").strip().lower()
         
         if decision == 's':
-            print("[✔️ Aprobado. Procesando...]")
+            print("[ Aprobado. Procesando...]")
             try:
                 eventos = self.app_graph.stream(None, self.config, stream_mode="values")
                 self._imprimir_eventos(eventos)
@@ -28,7 +28,7 @@ class CLIHandler:
                 GestorExcepcionesAuraComm.manejar_error(e)
             return True
         else:
-            print("[❌ Rechazado.]")
+            print("[ Rechazado.]")
             return False
 
     def _imprimir_eventos(self, eventos):
@@ -36,7 +36,7 @@ class CLIHandler:
         for event in eventos:
             msg = event["messages"][-1]
             if not getattr(msg, 'tool_calls', None) and msg.content and getattr(msg, 'type', None) == 'ai':
-                print(f"\n[🤖 AuraComm]: {msg.content}\n")
+                print(f"\n[ AuraComm]: {msg.content}\n")
 
     def iniciar_chat(self):
         """Bucle principal de la interfaz de línea de comandos (CLI)."""

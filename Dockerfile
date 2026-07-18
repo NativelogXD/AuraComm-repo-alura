@@ -27,5 +27,5 @@ RUN mkdir -p /app/db
 # Establecer el directorio de ejecución para que los imports funcionen correctamente
 WORKDIR /app/src
 
-# Comando por defecto para ejecutar la aplicación
-CMD ["python", "main.py"]
+# Comando por defecto para ejecutar la aplicación web
+CMD ["streamlit", "run", "main.py", "--server.port=8501", "--server.address=0.0.0.0"]
