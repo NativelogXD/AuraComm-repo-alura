@@ -8,6 +8,8 @@ from langgraph.prebuilt import ToolNode
 from langgraph.checkpoint.sqlite import SqliteSaver
 from rag.models import get_llm
 
+from agent.guardrails import handle_groq_400_error, clean_llm_hallucinations
+
 def crear_orquestador(herramientas_agente):
     import os
     BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -69,37 +71,22 @@ def crear_orquestador(herramientas_agente):
 
         # 4. Usar la sintaxis de cadena (Chain) de LangChain
         cadena = prompt_template | llm_with_tools
-        response = cadena.invoke({"messages": mensajes})
+        valid_tool_names = [t.name for t in herramientas_agente]
+        
+        try:
+            response = cadena.invoke({"messages": mensajes})
+        except Exception as e:
+            # Si hay un error de red o de parseo XML en Groq, delegar a los Guardrails
+            return handle_groq_400_error(str(e), valid_tool_names)
         
         # Normalizar el contenido para la capa de presentación (UI)
         if isinstance(response.content, list):
             texto = "".join(part.get("text", "") if isinstance(part, dict) else str(part) for part in response.content)
             response.content = texto
             
-        #  PARCHE DE INGENIERÍA AVANZADA: Interceptar Tool Calling XML de Groq/Llama
-        import re, json
-        if not getattr(response, "tool_calls", None) and "</function>" in response.content:
-            match = re.search(r'<([^>]+)>(\{.*?\})</function>', response.content, re.DOTALL)
-            if match:
-                tool_name = match.group(1).strip()
-                valid_tool_names = [t.name for t in herramientas_agente]
-                
-                # Solo interceptar si la herramienta es válida para este orquestador
-                if tool_name in valid_tool_names:
-                    try:
-                        tool_args = json.loads(match.group(2))
-                        response.tool_calls = [{
-                            "name": tool_name,
-                            "args": tool_args,
-                            "id": f"call_manual_{tool_name}"
-                        }]
-                        response.content = "" # Ocultar la etiqueta XML al usuario
-                    except Exception:
-                        pass
-                else:
-                    # Si alucina una herramienta que no existe, simplemente limpiar el XML
-                    response.content = response.content.replace(match.group(0), "")
-
+        # Pasar el mensaje por el filtro anti-alucinaciones antes de devolverlo
+        response = clean_llm_hallucinations(response, valid_tool_names)
+            
         return {"messages": [response]}
 
     def should_continue(state: AgentState):
