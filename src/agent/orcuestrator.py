@@ -82,17 +82,24 @@ def crear_orquestador(herramientas_agente):
             match = re.search(r'<([^>]+)>(\{.*?\})</function>', response.content, re.DOTALL)
             if match:
                 tool_name = match.group(1).strip()
-                try:
-                    tool_args = json.loads(match.group(2))
-                    response.tool_calls = [{
-                        "name": tool_name,
-                        "args": tool_args,
-                        "id": f"call_manual_{tool_name}"
-                    }]
-                    response.content = "" # Ocultar la etiqueta XML al usuario
-                except Exception:
-                    pass
-            
+                valid_tool_names = [t.name for t in herramientas_agente]
+                
+                # Solo interceptar si la herramienta es válida para este orquestador
+                if tool_name in valid_tool_names:
+                    try:
+                        tool_args = json.loads(match.group(2))
+                        response.tool_calls = [{
+                            "name": tool_name,
+                            "args": tool_args,
+                            "id": f"call_manual_{tool_name}"
+                        }]
+                        response.content = "" # Ocultar la etiqueta XML al usuario
+                    except Exception:
+                        pass
+                else:
+                    # Si alucina una herramienta que no existe, simplemente limpiar el XML
+                    response.content = response.content.replace(match.group(0), "")
+
         return {"messages": [response]}
 
     def should_continue(state: AgentState):
