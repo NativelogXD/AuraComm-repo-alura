@@ -5,13 +5,11 @@ langchain-core
 faiss-cpu
 langchain-text-splitters
 pymupdf
-langchain-openai
 langchain-experimental
 langgraph
 python-dotenv
 pydantic
 langsmith
-langchain-google-genai
 langchain-huggingface
 transformers
 pypdf
