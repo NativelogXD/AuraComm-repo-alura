@@ -28,4 +28,4 @@ RUN mkdir -p /app/db
 WORKDIR /app/src
 
 # Comando por defecto para ejecutar la aplicación web
-CMD ["streamlit", "run", "main.py", "--server.port=8501", "--server.address=0.0.0.0"]
+CMD ["streamlit", "run", "main.py", "--server.port=8501", "--server.address=0.0.0.0", "--server.fileWatcherType=none"]

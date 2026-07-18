@@ -97,8 +97,8 @@ def fase2_estructurar_documentos(documentos_crudos):
         return []
         
     print("Descargando/Cargando Tokenizador de HuggingFace...")
-    # Tokenizador multilingüe robusto para fragmentación por tokens reales
-    tokenizer = AutoTokenizer.from_pretrained("intfloat/multilingual-e5-small")
+    # Tokenizador optimizado para coincidir con el modelo de embeddings all-MiniLM-L6-v2
+    tokenizer = AutoTokenizer.from_pretrained("sentence-transformers/all-MiniLM-L6-v2")
     
     text_splitter = CharacterTextSplitter.from_huggingface_tokenizer(
         tokenizer,
@@ -149,7 +149,7 @@ def fase3_crear_base_vectorial(docs_procesados):
             shutil.rmtree(VECTORSTORE_PATH)
             
     if docs_procesados:
-        print("Calculando Embeddings (Gemini)...")
+        print("Calculando Embeddings (HuggingFace locales)...")
         embeddings = get_embeddings()
         vectorstore = FAISS.from_documents(docs_procesados, embeddings)
         vectorstore.save_local(VECTORSTORE_PATH)
