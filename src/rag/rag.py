@@ -107,7 +107,7 @@ def fase2_estructurar_documentos(documentos_crudos):
     )
     
     docs_procesados = text_splitter.split_documents(documentos_crudos)
-    print(f"Estructuración semántica completada: {len(docs_procesados)} fragmentos generados respetando tokens.")
+    print(f"Estructuración semántica completada: {len(docs_procesados)} fragmentos generados.")
     return docs_procesados
 
 def get_pdfs_hash():

@@ -62,7 +62,7 @@ def crear_orquestador(herramientas_agente):
     ])
 
     def call_model(state: AgentState):
-        # 🛡️ PARCHE DE CUOTA: Recortar historial para no exceder el límite de 6000 TPM de Groq
+        #  PARCHE DE CUOTA: Recortar historial para no exceder el límite de 6000 TPM de Groq
         mensajes = state["messages"]
         if len(mensajes) > 5:
             mensajes = mensajes[-5:] # Mantener solo la interacción más reciente
@@ -76,7 +76,7 @@ def crear_orquestador(herramientas_agente):
             texto = "".join(part.get("text", "") if isinstance(part, dict) else str(part) for part in response.content)
             response.content = texto
             
-        # 🛡️ PARCHE DE INGENIERÍA AVANZADA: Interceptar Tool Calling XML de Groq/Llama
+        #  PARCHE DE INGENIERÍA AVANZADA: Interceptar Tool Calling XML de Groq/Llama
         import re, json
         if not getattr(response, "tool_calls", None) and "</function>" in response.content:
             match = re.search(r'<([^>]+)>(\{.*?\})</function>', response.content, re.DOTALL)
@@ -110,9 +110,8 @@ def crear_orquestador(herramientas_agente):
     workflow.add_conditional_edges("agent", should_continue, {"continue": "action", "end": END})
     workflow.add_edge("action", "agent")
 
-    # 5. Compilación con HITL y Memoria
+    # 5. Compilación con Memoria (Sin HITL para web)
     app_graph = workflow.compile(
-        checkpointer=memory,
-        interrupt_before=["action"]  # Pausa antes de ejecutar herramienta (HITL)
+        checkpointer=memory
     )
     return app_graph

@@ -1,5 +1,5 @@
 import os
-from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings
+from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_groq import ChatGroq
 
 def get_llm(temperature=0):
@@ -13,9 +13,7 @@ def get_llm(temperature=0):
     )
 
 def get_embeddings():
-    """Devuelve la instancia configurada del modelo de Embeddings."""
-    api_key = os.getenv('GEMINI_API_KEY')
-    return GoogleGenerativeAIEmbeddings(
-        model="models/gemini-embedding-2",
-        google_api_key=api_key
+    """Devuelve la instancia configurada del modelo local de Embeddings Open Source."""
+    return HuggingFaceEmbeddings(
+        model_name="all-MiniLM-L6-v2"
     )

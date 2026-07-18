@@ -20,3 +20,6 @@ tabulate
 langchain-groq
 boto3
 s3fs
+streamlit
+torch
+sentence-transformers
