@@ -72,6 +72,17 @@ config = {"configurable": {"thread_id": st.session_state.thread_id}}
 # 2. LA MAGIA: Inyección de CSS para simular la consola pura
 estilo_consola = """
 <style>
+    /* Fondo negro profundo para toda la app */
+    .stApp {
+        background-color: #050505;
+    }
+    
+    /* Forzar color verde neón y fuente monoespaciada para todo el texto */
+    html, body, [class*="css"], p, div, span, h1, h2, h3 {
+        color: #00FF41 !important;
+        font-family: 'Courier New', Courier, monospace !important;
+    }
+
     /* Ocultar el menú superior y el pie de página de Streamlit para que no parezca una web */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}

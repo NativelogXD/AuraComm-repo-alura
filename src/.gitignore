@@ -13,6 +13,4 @@ data/*.pdf
 # Artefactos generados en runtime
 faiss_auracomm_index/
 faiss_auracomm_index_checksum.txt
-*.db
-*.db-shm
-*.db-wal
+checkpoints_auracomm.db

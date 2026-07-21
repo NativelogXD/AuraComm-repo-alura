@@ -1,89 +1,124 @@
-# NovaSync Solutions: Agente Inteligente B2B (AuraComm)
+# NovaSync: Agente Digital B2B (Arquitectura Determinista y Cloud-Native)
 
-AuraComm es el nucleo cognitivo de NovaSync Solutions, una corporacion simulada del sector de Telecomunicaciones e Infraestructura de Red B2B. Este repositorio contiene el codigo fuente de un agente de Inteligencia Artificial corporativo, disenado con una arquitectura Cloud-Native, Determinista y de Alta Seguridad.
+## Descripción General del Proyecto
 
-El objetivo del agente AuraComm es asistir a gerentes, ejecutivos de finanzas y analistas de red, resolviendo consultas complejas sobre la infraestructura de telefonia, facturacion, niveles de servicio (SLA) y auditorias de hardware, utilizando bases de datos corporativas centralizadas en un Data Lake.
+**NovaSync B2B** es un agente de inteligencia artificial corporativo diseñado para interactuar con gerentes y clientes empresariales. La corporación simulada opera en el sector de **Telecomunicaciones e Infraestructura de Red B2B** (proveyendo telefonía, venta de equipos de red, monitoreo de latencia/uptime y servicios MRR).
 
----
+El agente tiene acceso seguro a bases de datos corporativas en la nube (documentos PDF de arquitectura/soporte y bases de datos tabulares de clientes de telefonía alojadas en un Data Lake) para resolver consultas complejas en tiempo real a través de una interfaz web estilo terminal.
 
-## Arquitectura de la Solucion (Hibrida y Segura)
-
-A diferencia de los chatbots convencionales, AuraComm emplea un diseno determinista que mitiga las alucinaciones de datos mediante un orquestador que sigue estrictas reglas de negocio.
-
-La arquitectura se divide en capas de inteligencia y procesamiento:
-
-1. Cerebro Orquestador (Gemini 3.1 Flash Lite): El agente principal, impulsado por LangGraph. Analiza la intencion del usuario, aplica Query Expansion para mapear lenguaje natural a jerga tecnica corporativa, consulta herramientas, verifica precondiciones (Guardrails) y ensambla la respuesta final con un tono B2B profesional.
-2. Sub-Agente RAG (Groq - Llama 3.1 8B): Especializado exclusivamente en leer documentos tecnicos recuperados del indice vectorial a velocidades ultrarrapidas y devolver extracciones limpias en formato JSON estructurado.
-3. Motor Local de Embeddings (all-MiniLM-L6-v2): La vectorizacion de documentos se realiza en local, garantizando total independencia de cuotas de APIs externas y brindando maxima privacidad.
-4. Integracion de Datos (Cloud Data Lake - S3): Toda la fuente de verdad (archivos CSV de bases de datos y PDFs corporativos) vive en la nube (S3). La aplicacion actua como un motor de procesamiento Stateless que consulta, descarga en memoria y procesa con Pandas o FAISS de forma dinamica sin saturar el disco. Se incluye un sistema de ETags (MD5) para asegurar que la reconstruccion del indice FAISS solo ocurra si existen cambios reales en el origen de datos.
+A diferencia de los chatbots tradicionales, este proyecto emplea una **Arquitectura Determinista y Cloud-Native**. Esto significa que las herramientas, las conexiones a bases de datos y los formatos de salida están estrictamente controlados mediante validación estructurada y protocolos seguros en la nube, impidiendo que el LLM alucine datos corporativos.
 
 ---
 
-## Tecnologias Utilizadas
+## Arquitectura de la Solución
 
-- Frontend: Streamlit (Interfaz asincrona).
-- Core IA: LangChain & LangGraph (Memoria persistente via SQLite).
-- Modelos: Gemini API, Groq API, HuggingFace Local Embeddings.
-- Busqueda Vectorial: FAISS con recuperacion MMR (Maximal Marginal Relevance).
-- Data Lake Cloud: S3 Compatible (Boto3 / S3fs).
-- Procesamiento de Datos: Pandas.
-- Despliegue: Docker, Docker Compose.
+El núcleo del sistema está construido sobre un grafo de estados (**StateGraph**) que orquesta el razonamiento de la IA, expuesto mediante una interfaz web asíncrona:
+
+1. **Frontend Web (Streamlit)**: Interfaz inmersiva estilo "Terminal Cyberpunk" (CSS Inyectado) que proporciona una experiencia fluida al usuario final. La arquitectura asegura que los motores de IA y conexiones de nube carguen mediante un patrón *Singleton* en memoria caché para evitar latencias en la navegación.
+2. **Orquestador (LangGraph)**: Controla el flujo cognitivo del agente. Permite mantener el historial conversacional persistente mediante SQLite y tomar decisiones de enrutamiento automáticas.
+3. **Integración Cloud (Data Lake)**: Toda la información de la empresa vive centralizada en un Bucket S3 (MinIO). La aplicación local actúa únicamente como procesador de esta información remota.
+4. **Sistema RAG Open-Source (Local Embeddings)**:
+   - Se conecta al Bucket mediante `boto3`, escanea la nube y descarga temporalmente los documentos `.pdf` a la memoria RAM (flujo *stateless*).
+   - Utiliza **HuggingFace Embeddings** (`all-MiniLM-L6-v2`) de forma local para indexar vectores. Esto garantiza 100% de independencia de límites de cuota de APIs de terceros (como Google/OpenAI) para la recuperación de documentos.
+   - Cuenta con un sistema de **Sincronización Inteligente de ETags (MD5)** que detecta automáticamente si los PDFs fueron modificados en la nube para reconstruir el índice vectorial (FAISS) solo cuando es estrictamente necesario, ahorrando recursos de CPU.
+5. **Análisis Estructurado de Datos (CSV en Streaming)**: En lugar de descargar grandes volúmenes de datos al disco, utiliza Pandas integrado con `s3fs` para procesar los registros tabulares directo desde la nube a la memoria, ejecutando código dinámico generado por la IA con validaciones de seguridad sintáctica.
+6. **Dockerización PaaS**: Preparado con un `Dockerfile` optimizado (imagen `python:3.10-slim`) y gestión de volúmenes persistentes (`DB_DIR`), listo para despliegues con cero configuración (Zero-Config) en plataformas modernas como **Coolify** o **Dokploy**.
 
 ---
 
-## Configuracion y Ejecucion Local
+## Tecnologías y Herramientas Utilizadas
 
-Sigue estos pasos para arrancar el agente en tu entorno de desarrollo local.
+- **Lenguaje**: Python 3.10+
+- **Frontend**: Streamlit
+- **Orquestación IA**: LangChain & LangGraph
+- **Motor Cognitivo (LLM)**: Groq (Llama 3.1 8B Instant)
+- **Motor de Embeddings**: HuggingFace (`all-MiniLM-L6-v2` vía `sentence-transformers`)
+- **Base de Datos Vectorial**: FAISS (Facebook AI Similarity Search)
+- **Data Lake (Cloud Storage)**: MinIO (Compatible 100% con Amazon S3)
+- **Conectores S3**: Boto3 & S3fs
+- **Procesamiento Tabular**: Pandas
+- **Infraestructura**: Docker
 
-### 1. Clonar e Instalar
-```bash
-# Navega a la carpeta principal
-cd AuraComm/src
+---
 
-# Crea y activa tu entorno virtual
-python -m venv .venv
-.\.venv\Scripts\activate   # En Windows
-# source .venv/bin/activate # En Linux/Mac
+## Estructura del Proyecto
 
-# Instala las dependencias
-pip install -r requirements.txt
+La fuente de verdad de los datos es tu **Bucket de MinIO**. Debes asegurarte de que tus archivos `Client.csv`, `Record.csv` y los PDFs corporativos estén subidos dentro de una carpeta llamada `data/` en la raíz de tu bucket en la nube.
+
+```text
+📁 AuraComm
+├── 📄 Dockerfile        # Receta de despliegue en contenedores.
+├── 📄 README.md
+└── 📁 src
+    ├── 📁 agent         # Lógica del orquestador, tools y esquemas de Pydantic.
+    ├── 📁 core          # Configuración inicial y variables de entorno.
+    ├── 📁 excepciones   # Gestor de errores y límites de cuota (Rate Limits).
+    ├── 📁 rag           # Modelos RAG, Embeddings locales y FAISS.
+    ├── 📄 main.py       # Interfaz web de Streamlit (Punto de entrada).
+    └── 📄 requirements.txt
 ```
 
-### 2. Configurar el Entorno (.env)
-En el directorio `src/`, crea un archivo `.env`. Este agente utiliza una configuracion multi-modelo para optimizar costos y latencia:
-
-```env
-# Cerebro B2B Principal (Orquestador)
-GEMINI_API_KEY=tu_clave_gemini_aqui
-
-# Sub-Agente RAG (Extraccion Rapida de Texto)
-GROQ_API_KEY=gsk_tu_clave_groq_aqui
-```
-
-### 3. Iniciar el Agente
-```bash
-python -m streamlit run main.py
-```
-Nota: La primera ejecucion tomara tiempo adicional mientras se descarga el modelo de HuggingFace y se construye por primera vez el indice vectorial FAISS desde el almacenamiento S3.
-
 ---
 
-## Despliegue en Produccion (Docker)
+## Instrucciones de Ejecución Local (Desarrollo)
 
-El proyecto incluye un `Dockerfile` optimizado y un `docker-compose.yml`. Esta listo para ser desplegado en plataformas como Dokploy, Coolify o servidores on-premise.
+1. **Clonar y Preparar el Entorno:**
 
-1. Construye e inicia el contenedor:
    ```bash
-   docker-compose up -d --build
+   cd src/
    ```
-2. Volumenes Persistentes: La configuracion de Docker incluye un volumen para `/app/db`. Esto garantiza que las bases de datos de sesion de SQLite y los indices en cache de FAISS sobrevivan a los reinicios del contenedor.
+
+2. **Instalar Dependencias:**
+   Se recomienda usar un entorno virtual (`.venv`).
+
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+3. **Configurar Variables de Entorno:**
+   Crea un archivo `.env` en la carpeta `src/` con tus claves (Ya NO se necesita API de Gemini para embeddings):
+
+   ```env
+   # Cerebro Cognitivo LLM
+   GROQ_API_KEY=gsk_tu_clave_aqui
+
+   # Configuración de Nube S3 (MinIO Data Lake)
+   MINIO_ENDPOINT=http://tu-enlace-de-minio-puerto-9000
+   MINIO_ACCESS_KEY=tu_usuario
+   MINIO_SECRET_KEY=tu_contraseña
+   MINIO_BUCKET_NAME=nombre_de_tu_bucket
+
+   # Trazabilidad y Monitoreo (LangSmith)
+   LANGCHAIN_TRACING_V2=true
+   LANGCHAIN_ENDPOINT=https://api.smith.langchain.com
+   LANGCHAIN_API_KEY=ls__tu_clave_aqui
+   LANGCHAIN_PROJECT=AuraComm_Digital_Produccion
+   ```
+
+4. **Ejecutar el Frontend Web:**
+
+   ```bash
+   python -m streamlit run main.py
+   ```
+
+   *Nota: La primera ejecución tomará entre 1 y 2 minutos extra mientras descarga el modelo matemático de HuggingFace (~90MB) y construye el índice vectorial inicial.*
 
 ---
 
-## Ejemplos de Interaccion (Casos de Uso)
+## Despliegue en Producción (Coolify / Dokploy)
 
-El agente AuraComm comprende la capa semantica de NovaSync Solutions. Es posible realizar consultas como:
-- "¿Bajo que circunstancias especificas un cliente tiene derecho a recibir creditos de servicio proporcionales segun el SLA de NovaSync?" (Analisis de Documentos RAG).
-- "¿Que par de variables se utilizan para contabilizar y gestionar la cantidad de sub-dispositivos fisicos o equipos registrados asociados a un mismo tenant?" (Uso de Query Expansion).
-- "¿Que kpis manejas?" (Listado dinamico desde el catalogo semantico de metricas).
-- "¿Cuantos clientes cancelaron su suscripcion este mes y cual era su ingreso promedio?" (Analisis tabular).
+El proyecto está diseñado para desplegarse mediante Docker. Al conectar tu repositorio de GitHub a tu plataforma PaaS:
+
+1. Configura el puerto expuesto del contenedor a **8501**.
+2. Inyecta todas las variables de entorno de arriba directamente en el panel de control de tu PaaS.
+3. Monta un Volumen persistente en la ruta `/app/db` dentro del contenedor. Esto asegurará que la memoria de LangGraph y los índices de FAISS no se pierdan al reiniciar la aplicación.
+
+---
+
+## Ejemplos de Preguntas (Pruebas)
+
+- *"Háblame acerca del documento DOC-ARCH-001 y de qué trata."* (Consulta RAG)
+- *"¿Cuáles son las políticas de privacidad según el documento DOC-PRIV-003?"* (Consulta RAG)
+- *"Calcula cuál es la cantidad total de clientes en la base de datos."* (Consulta CSV Analítica)
+- *"¿Cuántos clientes en el archivo Record.csv experimentaron fallas en las llamadas?"* (Consulta CSV Analítica)
+- *"Cuéntame un chiste."* (El orquestador bloqueará esta solicitud, demostrando el límite estricto de dominio B2B).
