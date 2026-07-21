@@ -5,7 +5,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-OPERACIONES_VALIDAS = {"conteo", "promedio", "maximo", "valor_exacto"}
+OPERACIONES_VALIDAS = {"conteo", "promedio", "maximo", "valor_exacto", "suma", "argmax", "group_by_max", "correlacion_pearson", "percentil_75_promedio"}
 OPERADORES_VALIDOS = {"==", ">", "<", "!=", ">=", "<="}
 
 class SemanticLayer:
@@ -39,14 +39,51 @@ class SemanticLayer:
                 raise ValueError(f"Métrica '{nombre}' sin campo 'operacion' en metrics_catalog.json")
             if config["operacion"] not in OPERACIONES_VALIDAS:
                 raise ValueError(f"Métrica '{nombre}' tiene operación inválida '{config['operacion']}'. Válidas: {OPERACIONES_VALIDAS}")
-            if config["operacion"] == "promedio" and "columna_objetivo" not in config:
-                raise ValueError(f"Métrica '{nombre}' con operación 'promedio' requiere campo 'columna_objetivo'")
+            
+            # Validaciones específicas de las nuevas operaciones
+            if config["operacion"] in ["promedio", "suma", "maximo"] and "columna_objetivo" not in config:
+                raise ValueError(f"Métrica '{nombre}' con operación '{config['operacion']}' requiere 'columna_objetivo'")
+            if config["operacion"] == "argmax" and ("columna_objetivo" not in config or "id_columna" not in config):
+                raise ValueError(f"Métrica '{nombre}' con 'argmax' requiere 'columna_objetivo' e 'id_columna'")
+            if config["operacion"] == "group_by_max" and ("columna_objetivo" not in config or "group_col" not in config):
+                raise ValueError(f"Métrica '{nombre}' con 'group_by_max' requiere 'columna_objetivo' y 'group_col'")
+            if config["operacion"] == "correlacion_pearson" and "cols" not in config:
+                raise ValueError(f"Métrica '{nombre}' con 'correlacion_pearson' requiere lista 'cols' de 2 elementos")
+            if config["operacion"] == "percentil_75_promedio" and ("columna_percentil" not in config or "columna_objetivo" not in config):
+                raise ValueError(f"Métrica '{nombre}' con 'percentil_75_promedio' requiere 'columna_percentil' y 'columna_objetivo'")
+                
             for filtro in config.get("filtros", []):
                 if filtro.get("operador") not in OPERADORES_VALIDOS:
                     raise ValueError(f"Métrica '{nombre}' tiene operador inválido '{filtro.get('operador')}'. Válidos: {OPERADORES_VALIDOS}")
         logger.info("Catálogo de métricas validado: %d KPIs correctos.", len(self.catalogo))
 
-    def ejecutar_kpi(self, metric_name: str, filtro_dinamico: dict = None) -> str:
+    def _aplicar_filtro(self, df, col, op, val):
+        if col not in df.columns:
+            raise KeyError(f"Columna '{col}' no existe en el DataFrame.")
+        
+        # Casteo automático al tipo de la columna
+        tipo_col = df[col].dtype
+        try:
+            if pd.api.types.is_numeric_dtype(tipo_col):
+                val = float(val) if '.' in str(val) else int(val)
+        except Exception:
+            pass
+
+        if op == "==":
+            return df[df[col] == val]
+        elif op == ">":
+            return df[df[col] > val]
+        elif op == "<":
+            return df[df[col] < val]
+        elif op == "!=":
+            return df[df[col] != val]
+        elif op == ">=":
+            return df[df[col] >= val]
+        elif op == "<=":
+            return df[df[col] <= val]
+        return df
+
+    def ejecutar_kpi(self, metric_name: str, filtros_dinamicos: list = None) -> str:
         """
         Ejecuta de forma segura un KPI leyendo las reglas del JSON.
         """
@@ -64,52 +101,58 @@ class SemanticLayer:
         try:
             # 1. Aplicar filtros estáticos
             for filtro in config.get("filtros", []):
-                col, op, val = filtro["columna"], filtro["operador"], filtro["valor"]
-                if op == "==":
-                    df = df[df[col] == val]
-                elif op == ">":
-                    df = df[df[col] > val]
-                elif op == "<":
-                    df = df[df[col] < val]
-                elif op == "!=":
-                    df = df[df[col] != val]
-                elif op == ">=":
-                    df = df[df[col] >= val]
-                elif op == "<=":
-                    df = df[df[col] <= val]
+                df = self._aplicar_filtro(df, filtro["columna"], filtro["operador"], filtro["valor"])
 
-            # 2. Aplicar filtros dinámicos (inyectados por el LLM tras pasar la validación Pydantic)
-            if filtro_dinamico:
-                for col, val in filtro_dinamico.items():
-                    # Casteo automático al tipo de la columna
-                    tipo_col = df[col].dtype
-                    try:
-                        if pd.api.types.is_numeric_dtype(tipo_col):
-                            val = float(val) if '.' in str(val) else int(val)
-                    except:
-                        pass
-                    df = df[df[col] == val]
+            # 2. Aplicar múltiples filtros dinámicos
+            if filtros_dinamicos:
+                for filtro in filtros_dinamicos:
+                    df = self._aplicar_filtro(df, filtro["columna"], filtro["operador"], filtro["valor"])
         except KeyError as e:
             logger.error(f"Error de filtro KeyError: {e}")
-            return "Error interno: La dimensión de filtrado solicitada no existe en la base de datos."
+            return f"Error interno: {e}"
 
-        # 3. Ejecutar la operación matemática
-        if config["operacion"] == "conteo":
-            resultado = int(df.shape[0])
-        elif config["operacion"] == "promedio":
-            resultado = float(round(df[config["columna_objetivo"]].mean(), 2))
-        elif config["operacion"] == "maximo":
-            resultado = float(round(df[config["columna_objetivo"]].max(), 2))
-        elif config["operacion"] == "valor_exacto":
-            if df.empty:
-                return "Error: No se encontraron registros que coincidan con el filtro solicitado."
-            if len(df) > 1:
-                logger.warning(f"Anomalía: Se esperaban 1 registro exacto pero se encontraron {len(df)}")
-            resultado = df[config["columna_objetivo"]].iloc[0]
-            # Convertir numpy types a python nativo si aplica
-            if hasattr(resultado, 'item'):
-                resultado = resultado.item()
-        else:
-            return f"Error: Operación '{config['operacion']}' no soportada."
+        if df.empty:
+            return "Error: No se encontraron registros que coincidan con los filtros solicitados."
+
+        # 3. Ejecutar la operación matemática avanzada
+        op = config["operacion"]
+        try:
+            if op == "conteo":
+                resultado = int(df.shape[0])
+            elif op == "promedio":
+                resultado = float(round(df[config["columna_objetivo"]].mean(), 2))
+            elif op == "maximo":
+                resultado = float(round(df[config["columna_objetivo"]].max(), 2))
+            elif op == "suma":
+                resultado = float(round(df[config["columna_objetivo"]].sum(), 2))
+            elif op == "valor_exacto":
+                if len(df) > 1:
+                    logger.warning(f"Anomalía: Se esperaban 1 registro exacto pero se encontraron {len(df)}")
+                resultado = df[config["columna_objetivo"]].iloc[0]
+                if hasattr(resultado, 'item'):
+                    resultado = resultado.item()
+            elif op == "argmax":
+                idx_max = df[config["columna_objetivo"]].idxmax()
+                val_id = df.loc[idx_max, config["id_columna"]]
+                val_max = df.loc[idx_max, config["columna_objetivo"]]
+                resultado = f"{config['id_columna']}: {val_id} (Valor: {val_max})"
+            elif op == "group_by_max":
+                grouped = df.groupby(config["group_col"])[config["columna_objetivo"]].mean()
+                cat_max = grouped.idxmax()
+                val_max = grouped.max()
+                resultado = f"Categoría: {cat_max} (Promedio: {val_max:.2f})"
+            elif op == "correlacion_pearson":
+                col1, col2 = config["cols"]
+                corr = df[col1].corr(df[col2])
+                resultado = float(round(corr, 4))
+            elif op == "percentil_75_promedio":
+                p75 = df[config["columna_percentil"]].quantile(0.75)
+                df_top = df[df[config["columna_percentil"]] >= p75]
+                promedio = df_top[config["columna_objetivo"]].mean()
+                resultado = float(round(promedio, 2))
+            else:
+                return f"Error: Operación '{op}' no soportada."
+        except Exception as e:
+            return f"Error en el cálculo: {e}"
 
         return f"Éxito. Resultado de la métrica {metric_name_str}: {resultado}"

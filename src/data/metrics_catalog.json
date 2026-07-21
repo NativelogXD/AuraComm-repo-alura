@@ -127,5 +127,66 @@
     "columna_objetivo": "ovrmou_Mean",
     "operacion": "maximo",
     "description": "Valor máximo en minutos excedidos (Variable técnica: ovrmou_Mean)"
+  },
+  "conteo_clientes_filtro_compuesto": {
+    "df": "merged",
+    "operacion": "conteo",
+    "description": "Conteo de clientes que cumplen condiciones compuestas (ej. churn == 1 y totmrc_Mean > 50). Usa filtros_dinamicos obligatoriamente."
+  },
+  "promedio_caidas_voz": {
+    "df": "record",
+    "columna_objetivo": "drop_vce_Mean",
+    "operacion": "promedio",
+    "description": "Promedio de caídas de voz (Variable técnica: drop_vce_Mean). Usa filtros_dinamicos si necesitas comparar grupos (ej. activos vs cancelados)."
+  },
+  "suma_ingresos": {
+    "df": "client",
+    "columna_objetivo": "totrev",
+    "operacion": "suma",
+    "description": "Suma total consolidada de ingresos (totrev). Usa filtros_dinamicos si te piden filtrarlo por un área."
+  },
+  "porcentaje_clientes": {
+    "df": "merged",
+    "operacion": "conteo",
+    "description": "Para calcular porcentajes, el LLM debe hacer dos consultas de conteo (el total y el subgrupo) y dividirlos matemáticamente en su respuesta."
+  },
+  "maximo_minutos_excedidos_id": {
+    "df": "record",
+    "columna_objetivo": "ovrmou_Mean",
+    "id_columna": "Customer_ID",
+    "operacion": "argmax",
+    "description": "Encuentra el Customer_ID que tiene el valor máximo histórico en minutos excedidos (ovrmou_Mean)."
+  },
+  "promedio_meses_antiguedad": {
+    "df": "merged",
+    "columna_objetivo": "months",
+    "operacion": "promedio",
+    "description": "Tiempo de retención promedio en meses (months). Usa filtros_dinamicos si te piden filtrarlo por precio de hardware."
+  },
+  "ingreso_maximo_por_webcap": {
+    "df": "client",
+    "columna_objetivo": "avgrev",
+    "group_col": "hnd_webcap",
+    "operacion": "group_by_max",
+    "description": "Agrupa por capacidad web (hnd_webcap) y retorna la categoría que registra el ingreso promedio (avgrev) más alto."
+  },
+  "correlacion_eqpdays_churn": {
+    "df": "merged",
+    "cols": ["eqpdays", "churn"],
+    "operacion": "correlacion_pearson",
+    "description": "Índice de correlación de Pearson entre la antigüedad de los equipos en días (eqpdays) y el estado de cancelación (churn)."
+  },
+  "promedio_minutos_totales": {
+    "df": "client",
+    "columna_objetivo": "totmou",
+    "operacion": "promedio",
+    "description": "Promedio de minutos totales de uso (totmou). Usa filtros_dinamicos si te piden filtrar (ej. area o dualband)."
+  },
+  "promedio_interacciones_cuartil_superior": {
+    "df": "merged",
+    "columna_percentil": "totrev",
+    "columna_objetivo": "custcare_Mean",
+    "operacion": "percentil_75_promedio",
+    "description": "Calcula el percentil 75 del ingreso total (totrev) y devuelve el promedio de interacciones con servicio al cliente (custcare_Mean) de los clientes en ese cuartil superior."
   }
 }

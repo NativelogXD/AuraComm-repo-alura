@@ -35,10 +35,10 @@ class ConsultarKPITool(BaseTool):
         self._semantic_layer = SemanticLayer(df_client, df_record)
         logger.info("SemanticLayer inicializada con %d métricas del catálogo.", len(self._semantic_layer.catalogo))
     
-    def _run(self, metric_name: str, filtro_dinamico: dict = None) -> str:
+    def _run(self, metric_name: str, filtros_dinamicos: list[dict] = None) -> str:
         if self._semantic_layer is None:
             return "Error: Capa Semántica no inicializada."
-        return self._semantic_layer.ejecutar_kpi(metric_name, filtro_dinamico)
+        return self._semantic_layer.ejecutar_kpi(metric_name, filtros_dinamicos)
 
 # ResultadoRAG es importado desde agent.schemas
 
