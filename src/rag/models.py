@@ -50,7 +50,7 @@ def get_llm_rag(temperature=0):
 
 def get_embeddings():
     """
-    Embeddings y Base Vectorial: all-MiniLM-L6-v2
-    Local / Offline: Pesa ~90MB y calcula vectores en CPU sin gastar API.
+    Embeddings y Base Vectorial: paraphrase-multilingual-MiniLM-L12-v2
+    Local / Offline: Mejor soporte para consultas en español.
     """
-    return HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
+    return HuggingFaceEmbeddings(model_name="paraphrase-multilingual-MiniLM-L12-v2")
