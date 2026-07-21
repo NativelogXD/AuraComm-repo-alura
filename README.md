@@ -123,3 +123,8 @@ El agente AuraComm comprende la capa semantica de NovaSync Solutions. Es posible
 - "¿Que par de variables se utilizan para contabilizar y gestionar la cantidad de sub-dispositivos fisicos o equipos registrados asociados a un mismo tenant?" (Uso de Query Expansion).
 - "¿Que kpis manejas?" (Listado dinamico desde el catalogo semantico de metricas).
 - "¿Cuantos clientes cancelaron su suscripcion este mes y cual era su ingreso promedio?" (Analisis tabular).
+- "Si detectan que mi tenant esta recibiendo limitacion de ancho de banda (throttling), ¿que variables en el panel de telemetria confirmarian que estoy violando la politica de Fair Use mediante rafagas automatizadas?" (Comprension RAG Avanzada).
+- "¿Cual es el promedio de caidas de voz mensuales comparando a los clientes activos con los que cancelaron su servicio?" (Capa Semantica - Agrupaciones).
+- "¿Cual es la suma total de ingresos generados exclusivamente por los clientes en el area de 'CHICAGO AREA'?" (Capa Semantica - Filtros).
+- "¿Existe una correlacion estadistica fuerte entre la antiguedad de los equipos y la decision de cancelar el servicio?" (Capa Semantica - Operaciones Complejas).
+- "¿Cual es el promedio de interacciones con servicio al cliente del 25% de clientes que mas ingresos generan?" (Capa Semantica - Percentiles).
