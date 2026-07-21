@@ -19,19 +19,25 @@ class ConsultaKPIInput(BaseModel):
         ...,
         description=f"Nombre exacto de la métrica. Opciones válidas: {', '.join(get_metricas_validas())}"
     )
-    filtro_dinamico: dict = Field(
+    filtros_dinamicos: list[dict] = Field(
         default=None,
-        description="Filtro opcional adicional. ÚSALO para filtrar por ID (ej. {'Customer_ID': 1000001}) O para segmentar sub-grupos, por ejemplo clientes cancelados (ej. {'churn': 1}) o con tarjeta (ej. {'creditcd': 'Y'}). ¡DEBES usarlo si te piden el promedio de un grupo específico!"
+        description="""Lista opcional de filtros dinámicos. ÚSALO para segmentar grupos o combinar condiciones.
+Formato requerido para cada filtro: {"columna": "nombre_col", "operador": "==", "valor": X}.
+Operadores permitidos: "==", ">", "<", ">=", "<=", "!=".
+Ejemplos:
+- [{"columna": "churn", "operador": "==", "valor": 1}]
+- [{"columna": "churn", "operador": "==", "valor": 1}, {"columna": "totmrc_Mean", "operador": ">", "valor": 50}]"""
     )
     
-    @field_validator('filtro_dinamico')
-    def validar_filtro_dinamico(cls, v):
+    @field_validator('filtros_dinamicos')
+    def validar_filtros_dinamicos(cls, v):
         if v is not None:
-            # Lista blanca de columnas permitidas para evitar RCE o inyecciones
-            columnas_permitidas = {"Customer_ID", "churn", "creditcd", "area"}
-            for col in v.keys():
-                if col not in columnas_permitidas:
-                    raise ValueError(f"Columna de filtro '{col}' no permitida. Usar solo: {columnas_permitidas}")
+            operadores_validos = {"==", ">", "<", ">=", "<=", "!="}
+            for filtro in v:
+                if "columna" not in filtro or "operador" not in filtro or "valor" not in filtro:
+                    raise ValueError("Cada filtro dinámico debe tener 'columna', 'operador' y 'valor'.")
+                if filtro["operador"] not in operadores_validos:
+                    raise ValueError(f"Operador {filtro['operador']} no válido. Usa {operadores_validos}")
         return v
     
     @field_validator('metric_name')
