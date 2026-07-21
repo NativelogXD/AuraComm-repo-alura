@@ -13,8 +13,8 @@ def fase4_limpiar_csvs():
         endpoint = f"http://{endpoint}"
         
     bucket_name = os.getenv('MINIO_BUCKET_NAME')
-    access_key = os.getenv('MINIO_ACCESS_KEY')
-    secret_key = os.getenv('MINIO_SECRET_KEY')
+    access_key = os.getenv('MINIO_ACCESS_KEY') or os.getenv('MINIO_ROOT_USER')
+    secret_key = os.getenv('MINIO_SECRET_KEY') or os.getenv('MINIO_ROOT_PASSWORD')
     
     if not bucket_name or not endpoint or not access_key or not secret_key:
         logger.warning("Variables de entorno de MinIO incompletas. Omitiendo limpieza de CSVs.")
