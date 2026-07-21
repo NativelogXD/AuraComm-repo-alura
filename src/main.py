@@ -138,23 +138,8 @@ for msg in st.session_state.historial:
 # 5. Entrada de comandos del usuario
 prompt = st.chat_input("Ingresa un comando o pregunta...")
 
-# Botón lateral para limpiar historial manualmente (muy útil para depurar)
-with st.sidebar:
-    st.markdown("### ⚙️ Panel de Control")
-    if st.button("🗑️ Limpiar Historial"):
-        limpiar_historial()
-        st.cache_resource.clear()
-        st.session_state.clear()
-        st.rerun()
 
 if prompt:
-    # 5.1 Intercepción de comandos del sistema
-    if prompt.strip().lower() in ["clear", "reset", "/clear", "/reset"]:
-        limpiar_historial()
-        st.cache_resource.clear()
-        st.session_state.clear()
-        st.rerun()
-        
     st.session_state.historial.append({"role": "user", "content": prompt})
     
     # Invocación real del grafo de LangGraph
