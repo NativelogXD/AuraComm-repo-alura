@@ -79,7 +79,11 @@ estilo_consola = """
 
     /* Estilo para la barra de chat donde el usuario escribe */
     .stChatInputContainer {
+        background-color: #000000 !important;
         border: 1px solid #00FF41 !important;
+    }
+    .stChatInputContainer textarea {
+        color: #00FF41 !important;
     }
 </style>
 """
