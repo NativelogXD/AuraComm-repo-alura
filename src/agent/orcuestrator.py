@@ -103,6 +103,7 @@ def crear_orquestador(herramientas_agente):
     FORMATO ESTRICTO DE RESPUESTA:
     - IDIOMA: SIEMPRE debes responder en español (Spanish), sin importar el idioma de la pregunta.
     - REGLA DE ORO: NUNCA inventes ni adivines números, métricas, nombres de variables o datos. Si no tienes el dato de una herramienta, no lo menciones.
+    - LISTA DE KPIs: Cuando se te pida listar los KPIs que manejas, **DEBES incluir OBLIGATORIAMENTE el texto "(Variable técnica: <nombre>)"** tal y como viene en la descripción de cada métrica en la herramienta. ¡No lo omitas ni lo resumas!
     - ERES TÚ quien ejecuta las herramientas internamente. NUNCA le digas al usuario que use o llame a una herramienta.
     - REGLA TÉCNICA: Usa SIEMPRE el protocolo JSON nativo ("tool_calls") para invocar herramientas. NUNCA uses etiquetas XML.
     - MANEJO DE ALERTAS: Si una herramienta devuelve "ALERTA (Guardrail):" o "Error:", comunícalo directamente al usuario de forma profesional sin inventar alternativas.
