@@ -1,5 +1,8 @@
 import pandas as pd
 import os
+import logging
+
+logger = logging.getLogger(__name__)
 
 def fase4_limpiar_csvs():
     """Carga y limpia los DataFrames leyendo directamente desde MinIO (S3)."""
@@ -20,7 +23,7 @@ def fase4_limpiar_csvs():
     bucket_name = os.getenv('MINIO_BUCKET_NAME')
     
     if not bucket_name or not endpoint:
-        print("⚠️ Advertencia: Variables de entorno de MinIO no configuradas. Omitiendo limpieza de CSVs.")
+        logger.warning("Variables de entorno de MinIO no configuradas. Omitiendo limpieza de CSVs.")
         return None, None
 
     client_path = f"s3://{bucket_name}/data/Client.csv"
@@ -30,19 +33,20 @@ def fase4_limpiar_csvs():
         df_c = pd.read_csv(client_path, storage_options=storage_options)
         df_c.dropna(how="all", inplace=True)
         df_c.drop_duplicates(inplace=True)
-        print(f"Client.csv procesado desde MinIO. {len(df_c)} registros listos.")
+        logger.info("Client.csv procesado desde MinIO. %d registros listos.", len(df_c))
     except Exception as e:
-        print(f"Error cargando Client.csv desde MinIO: {e}")
+        logger.error("Error cargando Client.csv desde MinIO: %s", e)
         
     try:
         df_r = pd.read_csv(record_path, storage_options=storage_options)
         df_r.dropna(how="all", inplace=True)
         df_r.drop_duplicates(inplace=True)
-        if 'Latencia' in df_r.columns:
-            df_r['Latencia'].fillna(0, inplace=True)
-        print(f"Record.csv procesado desde MinIO. {len(df_r)} registros listos.")
+        # Rellenar NaN en todas las columnas numéricas con 0 (genérico, sin hardcoding)
+        numeric_cols = df_r.select_dtypes(include='number').columns
+        df_r[numeric_cols] = df_r[numeric_cols].fillna(0)
+        logger.info("Record.csv procesado desde MinIO. %d registros listos.", len(df_r))
     except Exception as e:
-        print(f"Error cargando Record.csv desde MinIO: {e}")
+        logger.error("Error cargando Record.csv desde MinIO: %s", e)
 
     return df_c, df_r
 
