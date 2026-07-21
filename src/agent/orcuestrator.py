@@ -1,6 +1,5 @@
 from typing import TypedDict, Annotated, Sequence
 import os
-import json
 import logging
 from langchain_core.messages import BaseMessage
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
@@ -48,11 +47,6 @@ def crear_orquestador(herramientas_agente):
     llm_orquestador = get_llm()
     llm_with_tools = llm_orquestador.bind_tools(herramientas_agente)
 
-    # Cargar el catálogo de KPIs dinámicamente para inyectarlo en el prompt
-    _catalog_path = os.path.join(os.path.dirname(__file__), "..", "data", "metrics_catalog.json")
-    with open(_catalog_path, "r", encoding="utf-8") as _f:
-        _kpi_names = ", ".join(json.load(_f).keys())
-
     TEMPLATE_ANALISIS = """
     Eres el agente de Inteligencia Artificial B2B de NovaSync Solutions.
 
@@ -82,20 +76,13 @@ def crear_orquestador(herramientas_agente):
       (ej: "¿cuántos clientes activos?", "¿cuál es el promedio de ingresos?", "¿cuántos cancelaron?")
     • El nombre de la métrica DEBE existir exactamente en el catálogo de KPIs.
 
-    TIPO C — Responder directamente SIN invocar herramientas:
-    • Preguntas sobre QUÉ KPIs están disponibles o cuántos existen.
-      (ej: "¿qué KPIs manejas?", "¿qué métricas tienes?", "¿qué puedo consultar?")
-    • En este caso, lista EXACTAMENTE los siguientes nombres del catálogo (sin traducir, sin renombrar, sin añadir ninguno):
-      {kpi_names}
-    • NUNCA agrupes en categorías ficticias ni traduzcas los nombres técnicos.
-
     REGLA CRÍTICA: Si la pregunta es de TIPO A pero también menciona un valor numérico,
     usa PRIMERO consultar_politicas_pdf para explicar el concepto, LUEGO decide si aplica un KPI.
-    NUNCA inventes nombres de variables, columnas o métricas que no existan en la lista del TIPO C.
+    NUNCA inventes nombres de variables, columnas o métricas que no existen.
 
     REGLA ANTI-ALUCINACIÓN ABSOLUTA:
     ESTÁ TERMINANTEMENTE PROHIBIDO inventar o adivinar:
-    - Nombres de métricas que no estén en la lista del TIPO C
+    - Nombres de columnas o variables del CSV (ej: NO puedes inventar 'promedio_antiguedad_meses')
     - Valores numéricos específicos sin haberlos obtenido de una herramienta
     - Contenido de documentos sin haberlos consultado con la herramienta
     Si no tienes la información en una herramienta, di exactamente: "No encontré esa información en la documentación disponible."
@@ -125,12 +112,8 @@ def crear_orquestador(herramientas_agente):
     - Responde en lenguaje claro, objetivo y profesional B2B. Usa viñetas si hay múltiples puntos.
     """
 
-    _system_prompt = (
-        TEMPLATE_ANALISIS.replace("{kpi_names}", _kpi_names)
-        + "\n\n" + TEMPLATE_RESPUESTA
-    )
     prompt_template = ChatPromptTemplate.from_messages([
-        ("system", _system_prompt),
+        ("system", f"{TEMPLATE_ANALISIS}\n\n{TEMPLATE_RESPUESTA}"),
         MessagesPlaceholder(variable_name="messages")
     ])
 
