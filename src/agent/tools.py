@@ -23,8 +23,10 @@ class ConsultarKPITool(BaseTool):
         "Úsala SOLO cuando el usuario pide un VALOR NUMÉRICO CALCULADO de la base de datos: "
         "conteos de clientes, promedios de ingresos, tasas de churn, máximos, o totales. "
         "EJEMPLOS de uso: '¿cuántos clientes activos hay?', '¿cuál es el promedio de ingresos?', '¿cuántos cancelaron?'. "
-        "NO usar para: explicar qué significa una variable, responder preguntas técnicas o de troubleshooting, "
-        "ni para preguntas sobre el nombre o definición de campos del CSV."
+        "MUY IMPORTANTE: Si te piden el promedio o valor de un subgrupo (ej. 'promedio de los que cancelaron'), "
+        "DEBES usar la métrica base (ej. 'ingreso_medio_mensual') e inyectarle OBLIGATORIAMENTE el 'filtro_dinamico' "
+        "correspondiente (ej. {'churn': 1} para cancelados, o {'churn': 0} para activos). "
+        "NO usar para explicar variables o responder preguntas técnicas."
     )
     args_schema: Type[BaseModel] = ConsultaKPIInput
     
