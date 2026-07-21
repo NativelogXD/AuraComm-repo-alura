@@ -21,7 +21,7 @@ class ConsultaKPIInput(BaseModel):
     )
     filtro_dinamico: dict = Field(
         default=None,
-        description="Filtro opcional adicional (ej. {'Customer_ID': 1000001}). ÚSALO SOLO cuando el usuario pregunte por un ID específico."
+        description="Filtro opcional adicional. Úsalo para segmentar datos (ej. {'churn': 1} para cancelados, {'churn': 0} para activos) o para consultar un ID (ej. {'Customer_ID': 1000001})."
     )
     
     @field_validator('filtro_dinamico')
