@@ -28,13 +28,11 @@ def get_s3_client():
     endpoint = os.getenv('MINIO_ENDPOINT')
     if endpoint and not endpoint.startswith('http'):
         endpoint = f"http://{endpoint}"
-    access_key = os.getenv('MINIO_ACCESS_KEY') or os.getenv('MINIO_ROOT_USER')
-    secret_key = os.getenv('MINIO_SECRET_KEY') or os.getenv('MINIO_ROOT_PASSWORD')
     return boto3.client(
         's3',
         endpoint_url=endpoint,
-        aws_access_key_id=access_key,
-        aws_secret_access_key=secret_key
+        aws_access_key_id=os.getenv('MINIO_ACCESS_KEY') or os.getenv('MINIO_ROOT_USER'),
+        aws_secret_access_key=os.getenv('MINIO_SECRET_KEY') or os.getenv('MINIO_ROOT_PASSWORD')
     )
 
 def fase1_cargar_pdfs_crudos():
