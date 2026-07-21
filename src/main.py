@@ -77,9 +77,13 @@ estilo_consola = """
         background-color: #050505;
     }
     
-    /* Forzar color verde neón y fuente monoespaciada para todo el texto */
-    html, body, p, div, h1, h2, h3, li, a {
+    /* Forzar color verde neón para los textos */
+    html, body, p, div, h1, h2, h3, li, a, span {
         color: #00FF41 !important;
+    }
+    
+    /* Cambiar la fuente principal sin pisar los iconos Material */
+    .stApp, .stMarkdown, .stChatInputContainer textarea, .stChatMessage {
         font-family: 'Courier New', Courier, monospace !important;
     }
 
