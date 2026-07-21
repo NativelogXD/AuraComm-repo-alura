@@ -14,7 +14,6 @@ from data.data_cleaning import fase4_limpiar_csvs
 
 def validar_entorno_nube():
     """Valida que todas las credenciales inyectadas por la plataforma (ej. Coolify) existan."""
-    # 2. Atrapar las variables inyectadas por Coolify/Dokploy (o .env local)
     MINIO_ENDPOINT = os.getenv("MINIO_ENDPOINT")
     MINIO_ACCESS = os.getenv("MINIO_ACCESS_KEY") or os.getenv("MINIO_ROOT_USER")
     MINIO_SECRET = os.getenv("MINIO_SECRET_KEY") or os.getenv("MINIO_ROOT_PASSWORD")
