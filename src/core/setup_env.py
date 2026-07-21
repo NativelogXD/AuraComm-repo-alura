@@ -14,15 +14,15 @@ from data.data_cleaning import fase4_limpiar_csvs
 
 def validar_entorno_nube():
     """Valida que todas las credenciales inyectadas por la plataforma (ej. Coolify) existan."""
-    # 2. Atrapar las variables inyectadas por Coolify (o .env local)
+    # 2. Atrapar las variables inyectadas por Coolify/Dokploy (o .env local)
     MINIO_ENDPOINT = os.getenv("MINIO_ENDPOINT")
-    MINIO_ACCESS = os.getenv("MINIO_ACCESS_KEY")
-    MINIO_SECRET = os.getenv("MINIO_SECRET_KEY")
+    MINIO_ACCESS = os.getenv("MINIO_ACCESS_KEY") or os.getenv("MINIO_ROOT_USER")
+    MINIO_SECRET = os.getenv("MINIO_SECRET_KEY") or os.getenv("MINIO_ROOT_PASSWORD")
     MINIO_BUCKET = os.getenv("MINIO_BUCKET_NAME")
 
     # 3. Validación de seguridad temprana
     if not MINIO_ENDPOINT or not MINIO_ACCESS or not MINIO_BUCKET:
-        raise ValueError("[ERROR] Faltan credenciales de MinIO en las variables de entorno. Verifica la configuración en Coolify o tu .env")
+        raise ValueError("[ERROR] Faltan credenciales de MinIO en las variables de entorno. Verifica la configuración en Dokploy o tu .env")
 
     # 4. Usar las variables para conectarnos al Data Lake (Prueba rápida)
     endpoint = MINIO_ENDPOINT if MINIO_ENDPOINT.startswith('http') else f"http://{MINIO_ENDPOINT}"
