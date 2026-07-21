@@ -1,0 +1,89 @@
+{
+  "clientes_activos": {
+    "df": "record",
+    "filtros": [{"columna": "churn", "operador": "==", "valor": 0}],
+    "operacion": "conteo",
+    "description": "Retorna el número de clientes activos"
+  },
+  "clientes_cancelados": {
+    "df": "record",
+    "filtros": [{"columna": "churn", "operador": "==", "valor": 1}],
+    "operacion": "conteo",
+    "description": "Retorna el número de clientes que cancelaron"
+  },
+  "total_clientes": {
+    "df": "client",
+    "filtros": [],
+    "operacion": "conteo",
+    "description": "Retorna el número total de clientes en la base de datos"
+  },
+  "promedio_ingresos_tarjeta_credito": {
+    "df": "client",
+    "filtros": [{"columna": "creditcd", "operador": "==", "valor": "Y"}],
+    "columna_objetivo": "totrev",
+    "operacion": "promedio",
+    "description": "Promedio de ingresos con tarjeta"
+  },
+  "promedio_ingresos_sin_tarjeta": {
+    "df": "client",
+    "filtros": [{"columna": "creditcd", "operador": "==", "valor": "N"}],
+    "columna_objetivo": "totrev",
+    "operacion": "promedio",
+    "description": "Promedio de ingresos sin tarjeta"
+  },
+  "promedio_ingresos_totales": {
+    "df": "client",
+    "columna_objetivo": "totrev",
+    "operacion": "promedio",
+    "description": "Promedio histórico de ingresos totales de toda la base de clientes"
+  },
+  "lineas_activas": {
+    "df": "client",
+    "columna_objetivo": "actvsubs",
+    "operacion": "valor_exacto",
+    "description": "Líneas activas de un cliente. Usa filtro_dinamico para Customer_ID."
+  },
+  "clientes_con_tarjeta": {
+    "df": "client",
+    "filtros": [{"columna": "creditcd", "operador": "==", "valor": "Y"}],
+    "operacion": "conteo",
+    "description": "Número de clientes que tienen tarjeta de crédito registrada (creditcd Y)"
+  },
+  "maximo_dias_equipo": {
+    "df": "client",
+    "columna_objetivo": "eqpdays",
+    "operacion": "maximo",
+    "description": "Valor máximo reportado en días de uso del equipo por un solo cliente"
+  },
+  "promedio_precio_equipo": {
+    "df": "client",
+    "columna_objetivo": "hnd_price",
+    "operacion": "promedio",
+    "description": "Precio promedio de los equipos telefónicos"
+  },
+  "promedio_llamadas_caidas_churn": {
+    "df": "record",
+    "filtros": [{"columna": "churn", "operador": "==", "valor": 1}],
+    "columna_objetivo": "drop_vce_Mean",
+    "operacion": "promedio",
+    "description": "Promedio de llamadas de voz caídas para usuarios que cancelaron el servicio"
+  },
+  "promedio_antiguedad_meses": {
+    "df": "record",
+    "columna_objetivo": "months",
+    "operacion": "promedio",
+    "description": "Promedio de meses de antigüedad de todos los clientes registrados"
+  },
+  "ingreso_medio_mensual": {
+    "df": "record",
+    "columna_objetivo": "rev_Mean",
+    "operacion": "valor_exacto",
+    "description": "Ingreso medio mensual de un cliente. Usa filtro_dinamico para Customer_ID."
+  },
+  "maximo_minutos_excedidos": {
+    "df": "record",
+    "columna_objetivo": "ovrmou_Mean",
+    "operacion": "maximo",
+    "description": "Valor máximo alcanzado en minutos de uso excedidos"
+  }
+}
