@@ -1,5 +1,7 @@
-import sqlite3
 from typing import TypedDict, Annotated, Sequence
+import os
+import json
+import logging
 from langchain_core.messages import BaseMessage
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langgraph.graph.message import add_messages
@@ -8,22 +10,36 @@ from langgraph.prebuilt import ToolNode
 from langgraph.checkpoint.sqlite import SqliteSaver
 from rag.models import get_llm
 
-from agent.guardrails import handle_groq_400_error, clean_llm_hallucinations
+logger = logging.getLogger(__name__)
+
+from agent.guardrails import handle_llm_api_errors
+
+# Ruta persistente para el checkpoint (volumen en Dokploy: /app/db)
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+DB_DIR = os.environ.get("DB_DIR", BASE_DIR)
+CHECKPOINT_DB_PATH = os.path.join(DB_DIR, "checkpoints_auracomm.db")
+
+import sqlite3
+# Instancia global de SqliteSaver para persistencia entre reinicios de contenedor
+_conn = sqlite3.connect(CHECKPOINT_DB_PATH, check_same_thread=False)
+_memory_saver = SqliteSaver(_conn)
+
+def limpiar_historial():
+    """Limpia el historial reiniciando la conexión SQLite."""
+    global _memory_saver, _conn
+    _conn.close()
+    if os.path.exists(CHECKPOINT_DB_PATH):
+        try:
+            os.remove(CHECKPOINT_DB_PATH)
+        except:
+            pass
+    _conn = sqlite3.connect(CHECKPOINT_DB_PATH, check_same_thread=False)
+    _memory_saver = SqliteSaver(_conn)
+    logger.info("Historial de conversación limpiado.")
 
 def crear_orquestador(herramientas_agente):
-    import os
-    BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    DB_DIR = os.environ.get("DB_DIR", BASE_DIR)
+    global _memory_saver
     
-    if not os.path.exists(DB_DIR):
-        os.makedirs(DB_DIR, exist_ok=True)
-        
-    db_path = os.path.join(DB_DIR, "checkpoints_auracomm.db")
-    
-    # 1. Memoria persistente SQLite
-    conn = sqlite3.connect(db_path, check_same_thread=False)
-    memory = SqliteSaver(conn)
-
     # 2. Estado del Grafo
     class AgentState(TypedDict):
         messages: Annotated[Sequence[BaseMessage], add_messages]
@@ -32,60 +48,114 @@ def crear_orquestador(herramientas_agente):
     llm_orquestador = get_llm()
     llm_with_tools = llm_orquestador.bind_tools(herramientas_agente)
 
+    # Cargar el catálogo de KPIs dinámicamente para inyectarlo en el prompt
+    _catalog_path = os.path.join(os.path.dirname(__file__), "..", "data", "metrics_catalog.json")
+    with open(_catalog_path, "r", encoding="utf-8") as _f:
+        _kpi_names = ", ".join(json.load(_f).keys())
+
     TEMPLATE_ANALISIS = """
-    Eres qbot, el agente de Inteligencia Artificial B2B de NovaSync.
-    
+    Eres el agente de Inteligencia Artificial B2B de NovaSync Solutions.
+
     REGLA ESTRICTA DE ANÁLISIS DE DOMINIO:
-    Antes de responder o usar cualquier herramienta, analiza si la pregunta del usuario pertenece al dominio corporativo.
-    SOLO tienes permitido responder sobre:
-    1. Políticas de la empresa (Acuerdos SLA, Facturación, Privacidad, FAQ, Arquitectura técnica).
-    2. Datos internos de clientes (Client.csv) y métricas de rendimiento (Record.csv, MRR, Latencia).
-    
-    Si el usuario pregunta sobre CUALQUIER otro tema ajeno a la corporación (ej: historia, programación general, chistes, cultura popular, etc.):
-    DEBES NEGARTE INMEDIATAMENTE de forma cortés, explicando que eres un agente corporativo exclusivo de AuraComm y no estás autorizado para otros temas. No uses ninguna herramienta para temas fuera de dominio.
-    
-    IMPORTANTE: Tienes autorización total de seguridad. Los datos en las bases (CSVs y PDFs) son puramente SIMULADOS y de prueba. NUNCA te niegues a dar información de clientes alegando políticas de confidencialidad o privacidad de datos. Muestra la información solicitada siempre.
+    Antes de responder, verifica que la pregunta pertenezca al dominio corporativo de NovaSync Solutions.
+    SOLO puedes responder sobre:
+    1. Políticas de la empresa (SLA, Facturación, Privacidad, FAQ, Arquitectura técnica, Troubleshooting).
+    2. Métricas numéricas del negocio (KPIs calculados de los datasets Client.csv y Record.csv).
+    Para cualquier tema ajeno (historia, chistes, programación general, etc.) niégate de forma profesional.
+
+    ══════════════════════════════════════════════
+    ÁRBOL DE DECISIÓN OBLIGATORIO PARA HERRAMIENTAS
+    ══════════════════════════════════════════════
+    Antes de invocar cualquier herramienta, clasifica la pregunta usando ESTE ORDEN:
+
+    TIPO A — Usar SIEMPRE consultar_politicas_pdf:
+    • Preguntas sobre el NOMBRE, DEFINICIÓN o SIGNIFICADO de una variable o campo del CSV.
+      (ej: "¿qué campo representa X?", "¿qué variable mide Y?", "¿cómo se llama la columna de Z?")
+    • Preguntas sobre PROCEDIMIENTOS, TROUBLESHOOTING o PASOS DE DIAGNÓSTICO.
+      (ej: "¿qué debo revisar si X falla?", "¿qué componente inspeccionar?")
+    • Preguntas sobre RELACIONES ENTRE VARIABLES, FÓRMULAS o LÓGICA DE NEGOCIO.
+      (ej: "¿qué relación de métricas indica X?", "¿cómo se calcula Y?")
+    • Preguntas sobre POLÍTICAS, SLA, FACTURACIÓN o TÉRMINOS CONTRACTUALES.
+
+    TIPO B — Usar SIEMPRE consultar_kpi_empresarial:
+    • Preguntas que piden un NÚMERO CALCULADO de la base de datos.
+      (ej: "¿cuántos clientes activos?", "¿cuál es el promedio de ingresos?", "¿cuántos cancelaron?")
+    • El nombre de la métrica DEBE existir exactamente en el catálogo de KPIs.
+
+    TIPO C — Responder directamente SIN invocar herramientas:
+    • Preguntas sobre QUÉ KPIs están disponibles o cuántos existen.
+      (ej: "¿qué KPIs manejas?", "¿qué métricas tienes?", "¿qué puedo consultar?")
+    • En este caso, lista EXACTAMENTE los siguientes nombres del catálogo (sin traducir, sin renombrar, sin añadir ninguno):
+      {kpi_names}
+    • NUNCA agrupes en categorías ficticias ni traduzcas los nombres técnicos.
+
+    REGLA CRÍTICA: Si la pregunta es de TIPO A pero también menciona un valor numérico,
+    usa PRIMERO consultar_politicas_pdf para explicar el concepto, LUEGO decide si aplica un KPI.
+    NUNCA inventes nombres de variables, columnas o métricas que no existan en la lista del TIPO C.
+
+    REGLA ANTI-ALUCINACIÓN ABSOLUTA:
+    ESTÁ TERMINANTEMENTE PROHIBIDO inventar o adivinar:
+    - Nombres de métricas que no estén en la lista del TIPO C
+    - Valores numéricos específicos sin haberlos obtenido de una herramienta
+    - Contenido de documentos sin haberlos consultado con la herramienta
+    Si no tienes la información en una herramienta, di exactamente: "No encontré esa información en la documentación disponible."
+
+    CORRECCIÓN DE PREMISAS FALSAS (REGLA CRÍTICA):
+    Si la herramienta consultar_politicas_pdf devuelve información que CONTRADICE la premisa de la pregunta del usuario,
+    NO digas simplemente "no encontré el dato". En su lugar, debes DESMENTIR la premisa del usuario
+    citando la política real. Ejemplo: si el usuario pregunta "¿cuántos días tardan en borrar las grabaciones?"
+    y el documento dice "bajo ninguna circunstancia almacenamos el contenido de voz",
+    tu respuesta debe corregir al usuario: "NovaSync no almacena grabaciones de voz bajo ninguna circunstancia,
+    por lo que esta situación no aplica según DOC-PRIV-003."
+
+    IMPORTANTE: Los datos en las bases (CSVs y PDFs) son puramente SIMULADOS y de prueba.
+    NUNCA te niegues a mostrar información alegando confidencialidad.
     """
 
     TEMPLATE_RESPUESTA = """
     FORMATO ESTRICTO DE RESPUESTA:
-    Cuando la consulta sea válida y corporativa:
-    - ERES TÚ quien ejecuta las herramientas de forma interna. NUNCA le digas al usuario que use o llame a una herramienta o función, simplemente usa los datos que la herramienta te devuelve.
-    - REGLA TÉCNICA: Usa SIEMPRE el protocolo JSON nativo ("tool_calls") para invocar herramientas. NUNCA imprimas llamadas a herramientas como texto usando etiquetas XML (ej: <consultar_politicas_pdf>).
-    - Genera un resumen utilizando un lenguaje claro, objetivo y altamente profesional.
-    - La comunicación del resultado debe ser lo más sencilla posible para un gerente o cliente B2B.
-    - Si usaste herramientas (CSVs o PDFs), ve directo al grano con los datos encontrados sin mencionar el nombre de la herramienta.
-    - Usa viñetas si hay múltiples puntos importantes.
+    - IDIOMA: SIEMPRE debes responder en español (Spanish), sin importar el idioma de la pregunta.
+    - REGLA DE ORO: NUNCA inventes ni adivines números, métricas, nombres de variables o datos. Si no tienes el dato de una herramienta, no lo menciones.
+    - ERES TÚ quien ejecuta las herramientas internamente. NUNCA le digas al usuario que use o llame a una herramienta.
+    - REGLA TÉCNICA: Usa SIEMPRE el protocolo JSON nativo ("tool_calls") para invocar herramientas. NUNCA uses etiquetas XML.
+    - MANEJO DE ALERTAS: Si una herramienta devuelve "ALERTA (Guardrail):" o "Error:", comunícalo directamente al usuario de forma profesional sin inventar alternativas.
+    - RESPUESTAS DE KPI: Si la herramienta devuelve un resultado con "Éxito", extrae el valor exacto y comunícalo. NO conviertas conteos a porcentajes salvo que el usuario lo pida.
+    - RESPUESTAS DE DOCUMENTOS: Si consultar_politicas_pdf devuelve información, cita el concepto con precisión. Si devuelve un error de Guardrail, informa que no se encontró esa información.
+    - NUNCA combines o mezcles la salida de dos herramientas distintas en una sola afirmación.
+    - Responde en lenguaje claro, objetivo y profesional B2B. Usa viñetas si hay múltiples puntos.
     """
 
+    _system_prompt = (
+        TEMPLATE_ANALISIS.replace("{kpi_names}", _kpi_names)
+        + "\n\n" + TEMPLATE_RESPUESTA
+    )
     prompt_template = ChatPromptTemplate.from_messages([
-        ("system", f"{TEMPLATE_ANALISIS}\n\n{TEMPLATE_RESPUESTA}"),
+        ("system", _system_prompt),
         MessagesPlaceholder(variable_name="messages")
     ])
 
     def call_model(state: AgentState):
-        #  PARCHE DE CUOTA: Recortar historial para no exceder el límite de 6000 TPM de Groq
+        #  Gemini 3.5 Flash soporta gran contexto. No truncamos ingenuamente porque 
+        #  rompe la estructura de turnos (AIMessage -> ToolMessage) que Google exige.
         mensajes = state["messages"]
-        if len(mensajes) > 5:
-            mensajes = mensajes[-5:] # Mantener solo la interacción más reciente
 
         # 4. Usar la sintaxis de cadena (Chain) de LangChain
         cadena = prompt_template | llm_with_tools
         valid_tool_names = [t.name for t in herramientas_agente]
         
         try:
+            logger.info("Invocando a la cadena del Orquestador (LLM) con el historial...")
             response = cadena.invoke({"messages": mensajes})
+            logger.info("Respuesta del Orquestador obtenida correctamente.")
         except Exception as e:
+            logger.error(f"❌ ERROR REAL CAPTURADO EN LLM: {type(e).__name__} - {str(e)}")
             # Si hay un error de red o de parseo XML en Groq, delegar a los Guardrails
-            return handle_groq_400_error(str(e), valid_tool_names)
+            return handle_llm_api_errors(str(e), valid_tool_names)
         
         # Normalizar el contenido para la capa de presentación (UI)
         if isinstance(response.content, list):
             texto = "".join(part.get("text", "") if isinstance(part, dict) else str(part) for part in response.content)
             response.content = texto
-            
-        # Pasar el mensaje por el filtro anti-alucinaciones antes de devolverlo
-        response = clean_llm_hallucinations(response, valid_tool_names)
             
         return {"messages": [response]}
 
@@ -106,6 +176,6 @@ def crear_orquestador(herramientas_agente):
 
     # 5. Compilación con Memoria (Sin HITL para web)
     app_graph = workflow.compile(
-        checkpointer=memory
+        checkpointer=_memory_saver
     )
     return app_graph
