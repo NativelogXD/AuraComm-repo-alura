@@ -1,5 +1,5 @@
 # Usamos la imagen oficial de Python slim (ligera) para evitar consumo excesivo en PaaS
-FROM python:3.10-slim
+FROM python:3.11-slim
 
 # Evitar que Python escriba archivos .pyc en disco y asegurar que los logs salgan directo a consola
 ENV PYTHONDONTWRITEBYTECODE=1
