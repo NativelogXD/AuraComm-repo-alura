@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  auracomm-app:
+    build: .
+    ports:
+      - "8501:8501"
+    environment:
+      # Configuraciones de base de datos vectorial y almacenamiento
+      - FAISS_INDEX_PATH=/app/data/faiss_index
+      - MINIO_ENDPOINT=${MINIO_ENDPOINT:-minio:9000}
+      - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY}
+      - MINIO_SECRET_KEY=${MINIO_SECRET_KEY}
+      - MINIO_SECURE=false
+      - DB_DIR=/app/db
+      # APIs de Cloud para la arquitectura Híbrida
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - GROQ_API_KEY=${GROQ_API_KEY}
+    volumes:
+      - ./data:/app/data
+      - ./db:/app/db
+    restart: unless-stopped

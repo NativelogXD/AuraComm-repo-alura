@@ -6,4 +6,13 @@ __pycache__/
 *.pyc
 .env
 
+# Datos binarios (la fuente de verdad es MinIO, no el repo)
+*.csv
+data/*.pdf
 
+# Artefactos generados en runtime
+faiss_auracomm_index/
+faiss_auracomm_index_checksum.txt
+*.db
+*.db-shm
+*.db-wal

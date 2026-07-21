@@ -5,8 +5,11 @@ FROM python:3.10-slim
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
-# Definir el directorio donde vivirán los datos persistentes (Volumen en Coolify)
+# Definir el directorio donde vivirán los datos persistentes (Volumen en Dokploy)
 ENV DB_DIR=/app/db
+
+# Instalar curl para el HEALTHCHECK
+RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
 
 # Crear el directorio de trabajo
 WORKDIR /app
@@ -26,6 +29,10 @@ RUN mkdir -p /app/db
 
 # Establecer el directorio de ejecución para que los imports funcionen correctamente
 WORKDIR /app/src
+
+# Healthcheck para que Dokploy sepa si la app está viva
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+  CMD curl -f http://localhost:8501/_stcore/health || exit 1
 
 # Comando por defecto para ejecutar la aplicación web
 CMD ["streamlit", "run", "main.py", "--server.port=8501", "--server.address=0.0.0.0", "--server.fileWatcherType=none"]
