@@ -77,8 +77,8 @@
   "ingreso_medio_mensual": {
     "df": "record",
     "columna_objetivo": "rev_Mean",
-    "operacion": "valor_exacto",
-    "description": "Ingreso medio mensual de un cliente. Usa filtro_dinamico para Customer_ID."
+    "operacion": "promedio",
+    "description": "Calcula el ingreso medio (promedio) mensual. Usa filtro_dinamico para segmentar (ej. {'churn': 1} para cancelados, o {'churn': 0} para activos). Si no te piden un grupo específico, no pases filtro."
   },
   "maximo_minutos_excedidos": {
     "df": "record",
