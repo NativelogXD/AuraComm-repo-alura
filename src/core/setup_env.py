@@ -1,6 +1,9 @@
 import os
+import logging
 import boto3
 from dotenv import load_dotenv
+
+logger = logging.getLogger(__name__)
 
 from rag.rag import (
     fase1_cargar_pdfs_crudos,
@@ -31,7 +34,7 @@ def validar_entorno_nube():
             aws_access_key_id=MINIO_ACCESS,
             aws_secret_access_key=MINIO_SECRET
         )
-        print(f"[OK] Conexión preparada hacia el bucket en la nube: {MINIO_BUCKET}")
+        logger.info("Conexión preparada hacia el bucket en la nube: %s", MINIO_BUCKET)
     except Exception as e:
         raise ValueError(f"[ERROR] Error al inicializar el cliente Boto3 para MinIO: {e}")
 
@@ -45,7 +48,7 @@ class SetupEnvironment:
         env_path = os.path.join(base_dir, '.env')
         load_dotenv(env_path)
         
-        print("\n--- INICIALIZANDO SISTEMA AURACOMM ---")
+        logger.info("--- INICIALIZANDO SISTEMA NOVASYNC ---")
         
         # Validar variables de nube antes de empezar procesos pesados
         validar_entorno_nube()
