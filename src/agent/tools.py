@@ -23,10 +23,8 @@ class ConsultarKPITool(BaseTool):
         "Úsala SOLO cuando el usuario pide un VALOR NUMÉRICO CALCULADO de la base de datos: "
         "conteos de clientes, promedios de ingresos, tasas de churn, máximos, o totales. "
         "EJEMPLOS de uso: '¿cuántos clientes activos hay?', '¿cuál es el promedio de ingresos?', '¿cuántos cancelaron?'. "
-        "MUY IMPORTANTE: Si te piden el promedio o valor de un subgrupo (ej. 'promedio de los que cancelaron'), "
-        "DEBES usar la métrica base (ej. 'ingreso_medio_mensual') e inyectarle OBLIGATORIAMENTE el 'filtro_dinamico' "
-        "correspondiente (ej. {'churn': 1} para cancelados, o {'churn': 0} para activos). "
-        "NO usar para explicar variables o responder preguntas técnicas."
+        "NO usar para: explicar qué significa una variable, responder preguntas técnicas o de troubleshooting, "
+        "ni para preguntas sobre el nombre o definición de campos del CSV."
     )
     args_schema: Type[BaseModel] = ConsultaKPIInput
     
@@ -83,10 +81,10 @@ class ConsultarPoliticasPDFTool(BaseTool):
             "Eres un analista corporativo experto en extracción de información.\n"
             "REGLAS DE ORO (ANTI-ALUCINACIONES):\n"
             "1. Responde basándote ÚNICA y EXCLUSIVAMENTE en el texto proporcionado en 'Contexto'.\n"
-            "2. Si la respuesta a la pregunta NO está explícitamente escrita en el contexto (o si el contexto habla de otros temas/documentos), DEBES establecer 'es_informacion_inventada' a True obligatoriamente.\n"
+            "2. Si la respuesta a la pregunta NO está en el contexto, DEBES establecer 'es_informacion_inventada' a True. Sin embargo, sé inteligente: reconoce sinónimos y conceptos equivalentes (ej. 'dispositivos' = 'phones', 'models').\n"
             "3. NUNCA asumas, deduzcas ni inventes URLs, correos, nombres de documentos (como DOC-XXX) ni datos de contacto.\n"
             "4. Si el contexto está vacío o contiene información irrelevante, marca 'es_informacion_inventada' a True de inmediato.\n"
-            "5. Si la pregunta del usuario hace referencia a un código de documento específico (como DOC-SUP-002 o DOC-FIN-004) y ese código NO aparece LITERALMENTE en el Contexto, DEBES marcar 'es_informacion_inventada' a True obligatoriamente.\n"
+            "5. NO seas excesivamente estricto si el usuario usa sus propias palabras. Usa tu capacidad analítica para conectar su pregunta con el contexto.\n"
             "6. PROHIBIDO ALUCINAR NÚMEROS: Si el usuario pregunta por un límite (ej. terabytes) o valor y NO aparece, marca 'es_informacion_inventada' a True.\n"
             "7. DETECCIÓN DE PREMISAS FALSAS: Si la pregunta asume algo (ej. 'cuántos días para borrar grabaciones') pero el contexto indica que esa característica NI SIQUIERA EXISTE o NUNCA se hace (ej. 'no grabamos audio'), DEBES responder explicando la política real en lugar de marcarlo como inventado.\n"
             "8. DEVUELVE ÚNICA Y EXCLUSIVAMENTE UN OBJETO JSON VÁLIDO. SIN TEXTO CONVERSACIONAL, SIN MARKDOWN (```json), SOLO EL RAW JSON.\n"
