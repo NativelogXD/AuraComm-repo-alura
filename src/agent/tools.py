@@ -1,64 +1,44 @@
 import json
+import logging
 from typing import Type
 from pydantic import BaseModel, Field
 from langchain_core.tools import BaseTool
-from rag.models import get_llm
-from langchain_experimental.agents.agent_toolkits.pandas.base import create_pandas_dataframe_agent
+from rag.models import get_llm, get_llm_rag
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import JsonOutputParser
 from langchain_core.runnables import RunnablePassthrough
 
+logger = logging.getLogger(__name__)
+
 from rag.rag import obtener_retriever_avanzado
 
 # 1. Esquemas Centralizados (Pydantic)
-from agent.schemas import ConsultaCSVInput, ConsultaPDFInput, CodigoPandas, ResultadoRAG
+from agent.schemas import ConsultaKPIInput, ConsultaPDFInput, ResultadoRAG
+from data.semantic_layer import SemanticLayer
 
 # 2. Clases de Herramientas (BaseTool)
-class AnalizarDatosCSVTool(BaseTool):
-    name: str = "analizar_datos_csv"
-    description: str = "ÚTIL ÚNICAMENTE para analizar datos tabulares o matemáticos (MRR, Clientes, Latencia)."
-    args_schema: Type[BaseModel] = ConsultaCSVInput
+class ConsultarKPITool(BaseTool):
+    name: str = "consultar_kpi_empresarial"
+    description: str = (
+        "Úsala SOLO cuando el usuario pide un VALOR NUMÉRICO CALCULADO de la base de datos: "
+        "conteos de clientes, promedios de ingresos, tasas de churn, máximos, o totales. "
+        "EJEMPLOS de uso: '¿cuántos clientes activos hay?', '¿cuál es el promedio de ingresos?', '¿cuántos cancelaron?'. "
+        "NO usar para: explicar qué significa una variable, responder preguntas técnicas o de troubleshooting, "
+        "ni para preguntas sobre el nombre o definición de campos del CSV."
+    )
+    args_schema: Type[BaseModel] = ConsultaKPIInput
     
-    df_client: object = None
-    df_record: object = None
+    _semantic_layer: object = None
     
-    def _run(self, consulta: str) -> str:
-        if self.df_client is None and self.df_record is None:
-            return "Error: CSVs no encontrados."
-            
-        from data.data_dictionary import PANDAS_INSTRUCTIONS
-        
-        llm_pandas = get_llm()
-        
-        # CodigoPandas es importado desde agent.schemas
-            
-        llm_with_schema = llm_pandas.with_structured_output(CodigoPandas)
-        
-        prompt = ChatPromptTemplate.from_messages([
-            ("system", PANDAS_INSTRUCTIONS),
-            ("human", "Consulta del usuario: {consulta}")
-        ])
-        
-        cadena = prompt | llm_with_schema
-        
-        try:
-            resultado_llm = cadena.invoke({"consulta": consulta})
-            codigo = resultado_llm.codigo.replace("```python", "").replace("```", "").strip()
-            
-            forbidden_keywords = ['import', 'os', 'sys', 'subprocess', 'open', 'eval', 'exec', '__']
-            if any(keyword in codigo for keyword in forbidden_keywords):
-                return "Error de Seguridad: Código bloqueado por contener instrucciones no permitidas (Risk of RCE)."
-            
-            locals_dict = {'df_client': self.df_client, 'df_record': self.df_record}
-            exec(codigo, {}, locals_dict)
-            
-            if 'final_result' in locals_dict:
-                # Retornar el resultado directamente como cadena determinista
-                return f"EJECUCIÓN DETERMINISTA EXITOSA.\nCÓDIGO EJECUTADO:\n{codigo}\n\nRESULTADO CRUDO:\n{str(locals_dict['final_result'])}"
-            else:
-                return "Error: La IA no guardó el resultado en la variable 'final_result'."
-        except Exception as e:
-            return f"Error ejecutando código determinista: {str(e)}"
+    def inicializar(self, df_client, df_record):
+        """Inicializa la Capa Semántica UNA SOLA VEZ (no en cada llamada)."""
+        self._semantic_layer = SemanticLayer(df_client, df_record)
+        logger.info("SemanticLayer inicializada con %d métricas del catálogo.", len(self._semantic_layer.catalogo))
+    
+    def _run(self, metric_name: str, filtro_dinamico: dict = None) -> str:
+        if self._semantic_layer is None:
+            return "Error: Capa Semántica no inicializada."
+        return self._semantic_layer.ejecutar_kpi(metric_name, filtro_dinamico)
 
 # ResultadoRAG es importado desde agent.schemas
 
@@ -67,21 +47,47 @@ def format_docs(docs):
 
 class ConsultarPoliticasPDFTool(BaseTool):
     name: str = "consultar_politicas_pdf"
-    description: str = "ÚTIL ÚNICAMENTE para buscar políticas corporativas, documentación técnica o arquitectura en los PDFs (SLA, Privacidad, FAQ)."
+    description: str = (
+        "Úsala para CUALQUIER pregunta conceptual, técnica o documental: "
+        "(1) qué campo o variable del CSV representa un concepto (ej: '¿qué variable es la tarifa plana?'), "
+        "(2) troubleshooting y diagnóstico (ej: '¿qué inspeccionar si drop_dat_Mean sube?'), "
+        "(3) relación entre métricas o lógica de negocio, "
+        "(4) políticas SLA, términos de facturación, privacidad y FAQ. "
+        "Esta herramienta busca en los PDFs corporativos. Si la pregunta involucra un nombre de columna "
+        "del CSV o un concepto técnico, SIEMPRE usar esta herramienta primero."
+    )
     args_schema: Type[BaseModel] = ConsultaPDFInput
     
-    def _run(self, consulta: str) -> str:
+    # El retriever se inicializa una sola vez cuando la herramienta se instancia,
+    # no en cada llamada _run. Esto evita abrir el índice FAISS repetidamente.
+    _retriever: object = None
+    
+    def model_post_init(self, __context):
+        """Inicializa el retriever FAISS una única vez al construir la herramienta."""
         try:
-            retriever = obtener_retriever_avanzado()
-        except Exception:
+            self._retriever = obtener_retriever_avanzado()
+        except Exception as e:
+            logger.warning("FAISS no disponible al inicializar la herramienta: %s", e)
+            self._retriever = None
+
+    def _run(self, consulta: str) -> str:
+        if self._retriever is None:
             return "Error: FAISS no inicializado."
 
-        llm_rag = get_llm()
+        llm_rag = get_llm_rag()
         parser = JsonOutputParser(pydantic_object=ResultadoRAG)
         
         system_prompt = (
-            "Eres un analista corporativo. Responde basándote SOLO en el contexto proporcionado.\n"
-            "REGLA CRÍTICA: NUNCA inventes URLs, enlaces, correos ni datos de contacto que no estén EXPLÍCITAMENTE escritos en el contexto.\n"
+            "Eres un analista corporativo experto en extracción de información.\n"
+            "REGLAS DE ORO (ANTI-ALUCINACIONES):\n"
+            "1. Responde basándote ÚNICA y EXCLUSIVAMENTE en el texto proporcionado en 'Contexto'.\n"
+            "2. Si la respuesta a la pregunta NO está explícitamente escrita en el contexto (o si el contexto habla de otros temas/documentos), DEBES establecer 'es_informacion_inventada' a True obligatoriamente.\n"
+            "3. NUNCA asumas, deduzcas ni inventes URLs, correos, nombres de documentos (como DOC-XXX) ni datos de contacto.\n"
+            "4. Si el contexto está vacío o contiene información irrelevante, marca 'es_informacion_inventada' a True de inmediato.\n"
+            "5. Si la pregunta del usuario hace referencia a un código de documento específico (como DOC-SUP-002 o DOC-FIN-004) y ese código NO aparece LITERALMENTE en el Contexto, DEBES marcar 'es_informacion_inventada' a True obligatoriamente.\n"
+            "6. PROHIBIDO ALUCINAR NÚMEROS: Si el usuario pregunta por un límite (ej. terabytes) o valor y NO aparece, marca 'es_informacion_inventada' a True.\n"
+            "7. DETECCIÓN DE PREMISAS FALSAS: Si la pregunta asume algo (ej. 'cuántos días para borrar grabaciones') pero el contexto indica que esa característica NI SIQUIERA EXISTE o NUNCA se hace (ej. 'no grabamos audio'), DEBES responder explicando la política real en lugar de marcarlo como inventado.\n"
+            "8. DEVUELVE ÚNICA Y EXCLUSIVAMENTE UN OBJETO JSON VÁLIDO. SIN TEXTO CONVERSACIONAL, SIN MARKDOWN (```json), SOLO EL RAW JSON.\n"
             "{format_instructions}\n\n"
             "Contexto:\n{context}"
         )
@@ -92,13 +98,19 @@ class ConsultarPoliticasPDFTool(BaseTool):
         
         # LCEL Cadena RAG Avanzada Pura
         rag_chain = (
-            {"context": retriever | format_docs, "input": RunnablePassthrough()}
+            {"context": self._retriever | format_docs, "input": RunnablePassthrough()}
             | prompt
             | llm_rag
             | parser
         )
         
         resultado = rag_chain.invoke(consulta)
+        
+        # Guardrail duro: Si el LLM interno admite que inventó (o no encontró) la info,
+        # cortamos el paso del texto alucinado hacia el orquestador principal.
+        if resultado.get("es_informacion_inventada") is True:
+            return "ALERTA (Guardrail): No existe información en la base de datos documental sobre la consulta o documento solicitado. Responde al usuario que el documento no existe o no tienes información sobre ese tema."
+            
         return json.dumps(resultado, ensure_ascii=False, indent=2)
 
 class HerramientasFactory:
@@ -107,10 +119,9 @@ class HerramientasFactory:
         self.df_record = df_record
         
     def obtener_tools(self):
-        csv_tool = AnalizarDatosCSVTool()
-        csv_tool.df_client = self.df_client
-        csv_tool.df_record = self.df_record
+        kpi_tool = ConsultarKPITool()
+        kpi_tool.inicializar(self.df_client, self.df_record)
         
         pdf_tool = ConsultarPoliticasPDFTool()
         
-        return [csv_tool, pdf_tool]
+        return [kpi_tool, pdf_tool]
