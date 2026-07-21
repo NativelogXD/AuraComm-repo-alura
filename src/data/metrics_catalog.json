@@ -9,7 +9,7 @@
       }
     ],
     "operacion": "conteo",
-    "description": "Retorna el número de clientes activos"
+    "description": "Retorna el número de clientes activos (Variable técnica: churn = 0)"
   },
   "clientes_cancelados": {
     "df": "record",
@@ -21,13 +21,13 @@
       }
     ],
     "operacion": "conteo",
-    "description": "Retorna el número de clientes que cancelaron"
+    "description": "Retorna el número de clientes que cancelaron o se dieron de baja (Variable técnica: churn = 1)"
   },
   "total_clientes": {
     "df": "client",
     "filtros": [],
     "operacion": "conteo",
-    "description": "Retorna el número total de clientes en la base de datos"
+    "description": "Retorna el número total de clientes en la base de datos (Variable técnica: uniqsubs)"
   },
   "promedio_ingresos_tarjeta_credito": {
     "df": "client",
@@ -40,7 +40,7 @@
     ],
     "columna_objetivo": "totrev",
     "operacion": "promedio",
-    "description": "Promedio de ingresos con tarjeta"
+    "description": "Promedio de ingresos (totrev) de clientes con tarjeta (Variable técnica: creditcd = Y)"
   },
   "promedio_ingresos_sin_tarjeta": {
     "df": "client",
@@ -53,19 +53,25 @@
     ],
     "columna_objetivo": "totrev",
     "operacion": "promedio",
-    "description": "Promedio de ingresos sin tarjeta"
+    "description": "Promedio de ingresos (totrev) sin tarjeta (Variable técnica: creditcd = N)"
   },
   "promedio_ingresos_totales": {
-    "df": "client",
+    "df": "merged",
     "columna_objetivo": "totrev",
     "operacion": "promedio",
-    "description": "Promedio histórico de ingresos totales de toda la base de clientes"
+    "description": "Promedio de ingresos totales (Variable técnica: totrev). Si te piden el promedio de ingresos de un grupo, DEBES usar filtro_dinamico (ej. churn: 1)"
+  },
+  "promedio_ingresos_mensuales": {
+    "df": "merged",
+    "columna_objetivo": "avgrev",
+    "operacion": "promedio",
+    "description": "Ingreso promedio estimado mensual (Variable técnica: avgrev). Usa filtro_dinamico para segmentar (ej. churn: 1)"
   },
   "lineas_activas": {
     "df": "client",
     "columna_objetivo": "actvsubs",
     "operacion": "valor_exacto",
-    "description": "Líneas activas de un cliente. Usa filtro_dinamico para Customer_ID."
+    "description": "Líneas o suscripciones activas (Variable técnica: actvsubs)."
   },
   "clientes_con_tarjeta": {
     "df": "client",
@@ -77,19 +83,19 @@
       }
     ],
     "operacion": "conteo",
-    "description": "Número de clientes que tienen tarjeta de crédito registrada (creditcd Y)"
+    "description": "Clientes con tarjeta de crédito registrada (Variable técnica: creditcd = Y)"
   },
   "maximo_dias_equipo": {
     "df": "client",
     "columna_objetivo": "eqpdays",
     "operacion": "maximo",
-    "description": "Valor máximo reportado en días de uso del equipo por un solo cliente"
+    "description": "Valor máximo en días de antigüedad del equipo (Variable técnica: eqpdays)"
   },
   "promedio_precio_equipo": {
     "df": "client",
     "columna_objetivo": "hnd_price",
     "operacion": "promedio",
-    "description": "Precio promedio de los equipos telefónicos"
+    "description": "Precio promedio de los equipos (Variable técnica: hnd_price)"
   },
   "promedio_llamadas_caidas_churn": {
     "df": "record",
@@ -102,24 +108,24 @@
     ],
     "columna_objetivo": "drop_vce_Mean",
     "operacion": "promedio",
-    "description": "Promedio de llamadas de voz caídas para usuarios que cancelaron el servicio"
+    "description": "Promedio de llamadas de voz caídas (Variable técnica: drop_vce_Mean) para usuarios cancelados (churn = 1)"
   },
   "promedio_antiguedad_meses": {
     "df": "record",
     "columna_objetivo": "months",
     "operacion": "promedio",
-    "description": "Promedio de meses de antigüedad de todos los clientes registrados"
+    "description": "Antigüedad promedio en meses (Variable técnica: months)"
   },
   "ingreso_medio_mensual": {
     "df": "record",
     "columna_objetivo": "rev_Mean",
     "operacion": "valor_exacto",
-    "description": "Ingreso medio mensual de un cliente. Usa filtro_dinamico para Customer_ID."
+    "description": "Ingreso medio mensual exacto (Variable técnica: rev_Mean) de un Customer_ID"
   },
   "maximo_minutos_excedidos": {
     "df": "record",
     "columna_objetivo": "ovrmou_Mean",
     "operacion": "maximo",
-    "description": "Valor máximo alcanzado en minutos de uso excedidos"
+    "description": "Valor máximo en minutos excedidos (Variable técnica: ovrmou_Mean)"
   }
 }

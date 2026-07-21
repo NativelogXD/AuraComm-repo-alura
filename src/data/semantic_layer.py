@@ -16,7 +16,8 @@ class SemanticLayer:
     def __init__(self, df_client: pd.DataFrame, df_record: pd.DataFrame):
         self.datasets = {
             "client": df_client,
-            "record": df_record
+            "record": df_record,
+            "merged": pd.merge(df_client, df_record, on="Customer_ID", how="inner")
         }
         
         # Cargar el catálogo de métricas
