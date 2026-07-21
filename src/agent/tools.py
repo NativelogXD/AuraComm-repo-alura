@@ -88,6 +88,7 @@ class ConsultarPoliticasPDFTool(BaseTool):
             "6. PROHIBIDO ALUCINAR NÚMEROS: Si el usuario pregunta por un límite (ej. terabytes) o valor y NO aparece, marca 'es_informacion_inventada' a True.\n"
             "7. DETECCIÓN DE PREMISAS FALSAS: Si la pregunta asume algo (ej. 'cuántos días para borrar grabaciones') pero el contexto indica que esa característica NI SIQUIERA EXISTE o NUNCA se hace (ej. 'no grabamos audio'), DEBES responder explicando la política real en lugar de marcarlo como inventado.\n"
             "8. DEVUELVE ÚNICA Y EXCLUSIVAMENTE UN OBJETO JSON VÁLIDO. SIN TEXTO CONVERSACIONAL, SIN MARKDOWN (```json), SOLO EL RAW JSON.\n"
+            "CONTEXTO ADICIONAL DEL SISTEMA: Para contabilizar y gestionar la cantidad de sub-dispositivos físicos o equipos registrados asociados a un mismo tenant, el sistema utiliza el par de variables 'phones' y 'models'.\n"
             "{format_instructions}\n\n"
             "Contexto:\n{context}"
         )
