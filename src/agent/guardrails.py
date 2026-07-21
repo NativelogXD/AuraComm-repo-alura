@@ -1,73 +1,37 @@
-import re
 import json
 from langchain_core.messages import AIMessage
 
-def handle_groq_400_error(error_str: str, valid_tool_names: list[str]) -> dict:
+def handle_llm_api_errors(error_str: str, valid_tool_names: list[str]) -> dict:
     """
-    Parche de Emergencia: Atrapa el Error 400 (BadRequest) de Groq.
-    Si el LLM (Llama 3) no cierra correctamente la etiqueta </function>,
-    extrae la intención cortada y reconstruye el AIMessage para evitar 
-    que el servidor colapse.
+    Parche de Emergencia: Atrapa y modulariza excepciones de LLMs (Gemini/Groq)
+    para devolver mensajes de error amigables al usuario según el código de estado.
     """
-    if "failed_generation" in error_str:
-        match = re.search(r"<function=([^>]+)>(\{.*?\})", error_str)
-        if match:
-            tool_name = match.group(1).strip()
-            
-            if tool_name in valid_tool_names:
-                try:
-                    # Limpiar strings escapados en el volcado de error de Groq
-                    args_str = match.group(2).replace("\\'", "'").replace('\\"', '"')
-                    
-                    # Asegurar que el JSON cierra correctamente
-                    last_brace = args_str.rfind('}')
-                    if last_brace != -1:
-                        args_str = args_str[:last_brace+1]
-                        
-                    tool_args = json.loads(args_str)
-                    
-                    # Crear un mensaje artificial para salvar la ejecución
-                    response = AIMessage(
-                        content="",
-                        tool_calls=[{
-                            "name": tool_name,
-                            "args": tool_args,
-                            "id": f"call_manual_{tool_name}"
-                        }]
-                    )
-                    return {"messages": [response]}
-                except Exception:
-                    pass
+    error_upper = error_str.upper()
+
+    if "503" in error_upper or "UNAVAILABLE" in error_upper:
+        fallback = AIMessage(content="[Aviso de Red] 🚦 Los servidores de Google Gemini están experimentando alta demanda en este momento. Por favor, espera unos segundos e intenta preguntar de nuevo.")
+        return {"messages": [fallback]}
+        
+    if "400 INVALID_ARGUMENT" in error_upper or "FUNCTION CALL TURN" in error_upper:
+        fallback = AIMessage(content="[Aviso de Historial] 🔄 Se detectó un error de sincronización en la conversación. Por favor, haz clic en el botón 'Limpiar Historial' e intenta de nuevo.")
+        return {"messages": [fallback]}
+        
+    if "429" in error_upper or "TOO MANY REQUESTS" in error_upper:
+        fallback = AIMessage(content="[Aviso de Límite] ⏳ Has excedido el límite de peticiones gratuitas. Por favor, espera un par de minutos antes de seguir preguntando.")
+        return {"messages": [fallback]}
+        
+    if "413" in error_upper or "TOO LARGE" in error_upper or "RATE_LIMIT_EXCEEDED" in error_upper:
+        fallback = AIMessage(content="[Aviso de Tokens] 📏 El contexto de la pregunta excedió el límite de la cuota del modelo. Por favor, simplifica tu pregunta.")
+        return {"messages": [fallback]}
+        
+    if "404" in error_upper or "NOT FOUND" in error_upper:
+        fallback = AIMessage(content="[Aviso de Modelo] ❌ El modelo de IA configurado no fue encontrado o tu API Key no tiene acceso a él. Revisa la variable GEMINI_API_KEY y el nombre del modelo en la configuración.")
+        return {"messages": [fallback]}
     
-    # Si la recuperación falla, evitar que Streamlit explote
-    fallback = AIMessage(content="[Error de Red] El servidor de IA generó una sintaxis incompleta y abortó la petición. Por favor, intenta hacer la pregunta con otras palabras.")
+    # Si todo falla, error genérico
+    fallback = AIMessage(content="[Error de Red] 🛑 Ocurrió un error inesperado al conectar con el servidor de Inteligencia Artificial. Por favor, intenta más tarde.")
     return {"messages": [fallback]}
 
-def clean_llm_hallucinations(response: AIMessage, valid_tool_names: list[str]) -> AIMessage:
-    """
-    Parche de Ingeniería Avanzada: Interceptar Tool Calling XML de Groq/Llama.
-    Previene que el LLM inyecte herramientas inexistentes (alucinaciones)
-    en la base de datos local SQLite, lo cual provocaría errores 400 subsecuentes.
-    """
-    if not getattr(response, "tool_calls", None) and "</function>" in response.content:
-        match = re.search(r'<([^>]+)>(\{.*?\})</function>', response.content, re.DOTALL)
-        if match:
-            tool_name = match.group(1).strip()
-            
-            # Solo interceptar si la herramienta es válida para este orquestador
-            if tool_name in valid_tool_names:
-                try:
-                    tool_args = json.loads(match.group(2))
-                    response.tool_calls = [{
-                        "name": tool_name,
-                        "args": tool_args,
-                        "id": f"call_manual_{tool_name}"
-                    }]
-                    response.content = "" # Ocultar la etiqueta XML al usuario
-                except Exception:
-                    pass
-            else:
-                # Si alucina una herramienta que no existe, limpiar el texto malicioso
-                response.content = response.content.replace(match.group(0), "")
-                
-    return response
+# (The function has been completely removed to clean up legacy XML parsing code)
+
+
