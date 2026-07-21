@@ -78,7 +78,7 @@ estilo_consola = """
     }
     
     /* Forzar color verde neón y fuente monoespaciada para todo el texto */
-    html, body, [class*="css"], p, div, span, h1, h2, h3 {
+    html, body, p, div, h1, h2, h3, li, a {
         color: #00FF41 !important;
         font-family: 'Courier New', Courier, monospace !important;
     }
