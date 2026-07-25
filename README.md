@@ -310,23 +310,43 @@ Todas las métricas soportan **filtros dinámicos** con operadores: `==`, `>`, `
 ## 💬 Ejemplos de Interacción
 
 ```text
-> ¿Cuántos clientes cancelaron su suscripción este mes y cuál era su ingreso promedio?
-  → Análisis tabular con filtros dinámicos (churn + promedio de ingresos)
+(Analisis de Documentos RAG).
+¿Bajo que circunstancias especificas un cliente tiene derecho a recibir creditos de servicio proporcionales segun el SLA de NovaSync?" 
 
-> ¿Bajo qué circunstancias un cliente tiene derecho a créditos de servicio según el SLA?
-  → Búsqueda RAG en documentos de políticas SLA
 
-> ¿Qué par de variables se usan para contabilizar sub-dispositivos de un tenant?
-  → Query Expansion + RAG (mapea "sub-dispositivos" a "phones models devices")
+(Uso de Query Expansion).
+"¿Que par de variables se utilizan para contabilizar y gestionar la cantidad de sub-dispositivos fisicos o equipos registrados asociados a un mismo tenant?" 
 
-> ¿Cuál es la suma total de ingresos de los clientes en 'CHICAGO AREA'?
-  → Capa Semántica con filtros dinámicos por área geográfica
 
-> ¿Existe correlación entre la antigüedad de equipos y la cancelación?
-  → Correlación de Pearson (eqpdays vs churn)
+(Listado dinamico desde el catalogo semantico de metricas).
 
-> ¿Cuál es el promedio de interacciones del 25% de clientes que más ingresos generan?
-  → Percentil 75 + promedio cruzado (operación compuesta)
+
+"¿Que kpis manejas?" (Listado dinamico desde el catalogo semantico de metricas).
+
+
+(Analisis tabular).
+"¿Cuantos clientes cancelaron su suscripcion este mes y cual era su ingreso promedio?" 
+
+
+(Comprension RAG Avanzada).
+"Si detectan que mi tenant esta recibiendo limitacion de ancho de banda (throttling), ¿que variables en el panel de telemetria confirmarian que estoy violando la politica de Fair Use mediante rafagas automatizadas?" 
+
+
+ (Capa Semantica - Agrupaciones)
+"¿Cual es el promedio de caidas de voz mensuales comparando a los clientes activos con los que cancelaron su servicio?"
+
+
+(Capa Semantica - Filtros)
+."¿Cual es la suma total de ingresos generados exclusivamente por los clientes en el area de 'CHICAGO AREA'?" .
+
+
+(Capa Semantica - Operaciones Complejas).
+"¿Existe una correlacion estadistica fuerte entre la antiguedad de los equipos y la decision de cancelar el servicio?" 
+
+
+(Capa Semantica - Percentiles).
+"¿Cual es el promedio de interacciones con servicio al cliente del 25% de clientes que mas ingresos generan?" 
+
 ```
 
 ---
