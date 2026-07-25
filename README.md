@@ -10,9 +10,13 @@
 
 <p align="center">
   <em>Arquitectura Cloud-Native · Determinista · Alta Seguridad · Anti-Alucinaciones</em>
+  
+
+</p>
+<p align="center">
+  <em>[ENLACE PUBLICO DEL PROYECTO](https://novasync-auracomm.duckdns.org/)</em>
 </p>
 
----
 
 ## 📋 Descripción
 
